@@ -2,7 +2,6 @@
 
 Reinforcement Learning agent for Tetris using a custom Gymnasium environment.
 
-
 ## Project Goals
 
 - Build a custom Tetris environment compatible with Gymnasium
@@ -41,4 +40,35 @@ tetris-rl/
 ├── tests/
 ├── scripts/
 └── results/
+```
+
+---
+
+## Current Status
+
+- [x] Define tetromino pieces
+- [x] Implement board representation
+- [X] Feature extraction (height, holes, bumpiness)
+- [ ] Implement Gymnasium environment
+- [X] Add heuristic baseline
+- [ ] Train DQN agent
+- [ ] Train PPO agent
+- [ ] Evaluate performance
+- [ ] Add training plots
+
+---
+
+# Installation
+
+```bash
+# Clone repository
+git clone https://github.com/SyleKu/tetris-rl.git
+cd tetris-rl
+
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt 
 ```
