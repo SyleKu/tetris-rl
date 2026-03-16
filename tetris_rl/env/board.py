@@ -37,13 +37,13 @@ class Board:
                 br = top + r
                 bc = left + c
                 if br >= 0:
-                    self.grid[bc][br] = 1
+                    self.grid[br, bc] = 1
 
     def clear_lines(self) -> int:
         full_rows = [r for r in range(self.height) if np.all(self.grid[r] == 1)]
         num_cleared = len(full_rows)
 
-        if num_cleared == 0:
+        if num_cleared > 0:
             new_grid = np.zeros_like(self.grid)
             remaining = np.delete(self.grid, full_rows, axis=0)
             new_grid[-remaining.shape[0]:] = remaining
@@ -52,4 +52,4 @@ class Board:
         return num_cleared
 
     def is_game_over(self) -> bool:
-        return np.any(self.grid == 1)
+        return bool(np.any(self.grid[0] == 1))

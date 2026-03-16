@@ -2,7 +2,7 @@ import numpy as np
 
 def column_heights(grid: np.ndarray) -> np.ndarray:
     height, width = grid.shape
-    heights = np.zeros_like(width, dtype=np.int32)
+    heights = np.zeros(width, dtype=np.int32)
 
     for col in range(width):
         filled = np.where(grid[:, col] == 1)[0]
