@@ -40,8 +40,8 @@ def test_step_returns_gymnasium_tuple():
 
     assert isinstance(obs, np.ndarray)
     assert isinstance(reward, float)
-    assert isinstance(terminated, float)
-    assert isinstance(terminated, float)
+    assert isinstance(terminated, bool)
+    assert isinstance(truncated, bool)
     assert isinstance(info, dict)
 
 def test_invalid_actions_sets_info_flag():
