@@ -10,7 +10,7 @@ def load_model(algorithm: str, model_path: str):
 
     if algorithm == "dqn":
         return DQN.load(model_path)
-    elif algorithm == "dqn":
+    elif algorithm == "ppo":
         return PPO.load(model_path)
 
     raise ValueError(f"Unsupported algorithm: {algorithm}")
@@ -70,7 +70,7 @@ def evaluate(algorithm: str, model_path: str, episodes: int = 20, max_steps_per_
 
 if __name__ == "__main__":
     evaluate(
-        algorithm="dqn",
+        algorithm="ppo",
         model_path="./results/checkpoints/dqn_tetris.zip",
         episodes=1,
         max_steps_per_episode=500
