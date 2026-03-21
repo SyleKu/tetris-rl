@@ -5,7 +5,7 @@ from stable_baselines3 import DQN
 
 from tetris_rl.env.tetris_env import TetrisEnv
 
-def evaluate(model_path: str, episodes: int = 20):
+def evaluate(model_path: str, episodes: int = 20, max_steps_per_episode: int | None = 1000):
     if not Path(model_path).exists():
         raise FileNotFoundError(f"Model not found: {model_path}")
 
@@ -17,31 +17,49 @@ def evaluate(model_path: str, episodes: int = 20):
 
     for episode in range(episodes):
         obs, _ = env.reset()
-        done = False
         total_reward = 0.0
         total_lines = 0
+        step_count = 0
 
-        while not done:
+        terminated = False
+        truncated = False
+
+        while not (terminated or truncated):
+            if max_steps_per_episode is not None and step_count >= max_steps_per_episode:
+                truncated = True
+                break
+
             action, _ = model.predict(obs, deterministic=True)
             action = int(action)
 
-            obs, reward, terminated, truncated, info = env.step(action)
-            done = terminated or truncated
+            obs, reward, terminated, truncated_env, info = env.step(action)
+            truncated = truncated or truncated_env
+
             total_reward += reward
             total_lines += info.get('lines_cleared', 0)
+            step_count += 1
 
         rewards.append(total_reward)
         lines.append(total_lines)
 
-        print(f"Episode {episode + 1}: reward={total_reward:.2f}, lines={total_lines}")
+        print(
+            f"Episode {episode + 1}: "
+            f"reward={total_reward:.2f}, "
+            f"lines={total_lines},"
+            f"steps={step_count}, "
+            f"terminated={terminated}, "
+            f"truncated={truncated}"
+        )
 
+    print("\n--- Evaluation Results ---")
     print(f"Average reward: {np.mean(rewards):.2f}")
     print(f"Average lines: {np.mean(lines):.2f}")
 
     return rewards, lines
 
-def main():
-    evaluate(model_path="./results/checkpoints/dqn_tetris.zip")
-
 if __name__ == "__main__":
-    main()
+    evaluate(
+        model_path="./results/checkpoints/dqn_tetris.zip",
+        episodes=1,
+        max_steps_per_episode=500
+    )
