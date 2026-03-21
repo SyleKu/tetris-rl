@@ -69,7 +69,8 @@ class TetrisEnv(gym.Env):
             row += 1
         return row
 
-    def piece_one_hot(piece_name: str, piece_names: list[str]) -> np.ndarray:
+    @staticmethod
+    def piece_one_hot(self, piece_name: str, piece_names: list[str]) -> np.ndarray:
         vec = np.zeros(len(piece_names), dtype=np.float32)
         vec[piece_names.index(piece_name)] = 1.0
         return vec

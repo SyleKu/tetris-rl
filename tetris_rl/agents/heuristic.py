@@ -9,7 +9,7 @@ class HeuristicWeights:
     holes: float = -0.7
     bumpiness: float = -0.2
     aggregate_height: float = -0.3
-    max_height_: float = -0.2
+    max_height: float = -0.2
 
 def score_board(grid, lines_cleared: int, weights: HeuristicWeights) -> float:
     return(
@@ -17,7 +17,7 @@ def score_board(grid, lines_cleared: int, weights: HeuristicWeights) -> float:
         + weights.holes * holes(grid)
         + weights.bumpiness * bumpiness(grid)
         + weights.aggregate_height * aggregate_height(grid)
-        + weights.max_height_ * max_height(grid)
+        + weights.max_height * max_height(grid)
     )
 
 class HeuristicAgent:
@@ -52,7 +52,7 @@ class HeuristicAgent:
                     row += 1
 
                 board_copy.place_piece(piece, row, column)
-                lines_cleared = board_copy.cleared_lines()
+                lines_cleared = board_copy.clear_lines()
 
                 score = score_board(
                     board_copy.grid,

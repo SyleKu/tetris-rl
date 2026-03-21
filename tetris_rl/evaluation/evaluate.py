@@ -33,7 +33,7 @@ def evaluate(model_path: str, episodes: int = 20):
         rewards.append(total_reward)
         lines.append(total_lines)
 
-        print(f"Episode: {episode + 1}: reward={total_reward:.2f}, lines={total_lines}")
+        print(f"Episode {episode + 1}: reward={total_reward:.2f}, lines={total_lines}")
 
     print(f"Average reward: {np.mean(rewards):.2f}")
     print(f"Average lines: {np.mean(lines):.2f}")

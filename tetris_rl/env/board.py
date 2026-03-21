@@ -23,7 +23,7 @@ class Board:
                 if bc < 0 or bc >= self.width or br >= self.height:
                     return True
 
-                if br >= 0 and self.grid[br][bc] == 1:
+                if br >= 0 and self.grid[br, bc] == 1:
                     return True
 
         return False
