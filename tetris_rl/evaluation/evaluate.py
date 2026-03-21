@@ -8,9 +8,9 @@ from tetris_rl.env.tetris_env import TetrisEnv
 def load_model(algorithm: str, model_path: str):
     algorithm = algorithm.lower()
 
-    if algorithm == "DQN":
+    if algorithm == "dqn":
         return DQN.load(model_path)
-    elif algorithm == "PPO":
+    elif algorithm == "dqn":
         return PPO.load(model_path)
 
     raise ValueError(f"Unsupported algorithm: {algorithm}")
