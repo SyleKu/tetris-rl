@@ -1,16 +1,27 @@
 from pathlib import Path
 
 import numpy as np
-from stable_baselines3 import DQN
+from stable_baselines3 import DQN, PPO
 
 from tetris_rl.env.tetris_env import TetrisEnv
 
-def evaluate(model_path: str, episodes: int = 20, max_steps_per_episode: int | None = 1000):
+def load_model(algorithm: str, model_path: str):
+    algorithm = algorithm.lower()
+
+    if algorithm == "DQN":
+        return DQN.load(model_path)
+    elif algorithm == "PPO":
+        return PPO.load(model_path)
+
+    raise ValueError(f"Unsupported algorithm: {algorithm}")
+
+
+def evaluate(algorithm: str, model_path: str, episodes: int = 20, max_steps_per_episode: int | None = 1000):
     if not Path(model_path).exists():
         raise FileNotFoundError(f"Model not found: {model_path}")
 
     env = TetrisEnv()
-    model = DQN.load(model_path)
+    model = load_model(algorithm, model_path)
 
     rewards = []
     lines = []
@@ -59,6 +70,7 @@ def evaluate(model_path: str, episodes: int = 20, max_steps_per_episode: int | N
 
 if __name__ == "__main__":
     evaluate(
+        algorithm="dqn",
         model_path="./results/checkpoints/dqn_tetris.zip",
         episodes=1,
         max_steps_per_episode=500
