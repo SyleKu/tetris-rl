@@ -49,7 +49,7 @@ tetris-rl/
 - [x] Define tetromino pieces
 - [x] Implement board representation
 - [X] Feature extraction (height, holes, bumpiness)
-- [ ] Implement Gymnasium environment
+- [X] Implement Gymnasium environment
 - [X] Add heuristic baseline
 - [ ] Train DQN agent
 - [ ] Train PPO agent
