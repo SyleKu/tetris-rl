@@ -140,3 +140,113 @@ Planned experiment:
 - Heuristic demonstrates high achievable performance
 - RL agents currently fail due to rewards signal limitations
 - Next focus: **improving learning signal via reward shaping**
+
+
+---
+
+## Reward-Shaping Experiment A
+
+### Motivation
+Previous RL uns with the redesigned action space showed that both DQN and PPO
+could select valid actions, but neither agent learned to clear lines.
+The reward signal appeared to be dominated by penalties, while positive rewards
+for line clearing were too sparse.
+
+### Change
+
+Adjusted reward shaping to make successful play more attractive:
+
+- increased line clearing reward from `5.0` to `10.0`
+- reduced penalties:
+  - aggregate height: `0.02 -> 0.01`
+  - holes: `0.02 -> 0.01`
+  - bumpiness: `0.02 -> 0.01`
+- added a small positive reward (`+0.1`) for a valid move
+
+### Hypothesis
+A denser and less punitive reward signal may help PPO/DQN discover line-clearing
+behavior more easily.
+
+### Planned evaluation
+- train PPO for 50k timesteps
+- evaluate with 20 episodes
+- compare:
+  - average reward
+  - average lines
+  - average episodes length
+
+
+
+## Results — Rewards-Shaping Experiment A
+
+### Summary
+
+Reward shaping was adjusted to:
+- increase line clearing reward
+- reduce penalties for height, holes, and bumpiness
+- add a small positive reward for valid moves
+
+---
+
+### DQN Results
+
+| Timesteps | Avg Reward | Avg Lines | Steps  |
+|-----------|------------|-----------|--------|
+| 10k       | -14.99     | 0.00      | ~8–16  |
+| 50k       | -21.10     | 0.00      | ~7–21  |
+| 100k      | -32.51     | 0.05      | ~13–29 |
+
+**Observations:**
+- Improved reward compared to baseline
+- Slight increase in episode length
+- First occurrence of line clearing (rare)
+- No stable strategy learned
+
+---
+
+### PPO Results
+
+| Timesteps | Avg Reward | Avg Lines | Steps |
+|-----------|------------|-----------|-------|
+| 10k       | -18.03     | 0.00      | ~8–18 |
+| 50k       | -11.05     | 0.00      | ~6–14 |
+| 100k      | -11.09     | 0.00      | ~6–12 |
+
+**Observations:**
+- Significant improvement in reward values
+- More stable behavior
+- No line clearing observed
+- Converges to local optimum (low-penalty board stated)
+
+---
+
+### Interpretation
+
+- Reward shaping improved learning signal
+- Agents learned to avoid bad board states
+- However, line clearing remains too rare to be discovered reliably
+
+---
+
+### Key Insight
+
+Agents optimize shaping rewards instead of the actual objective:
+- PPO converges to safe but unproductive strategies
+- DQN occasionally discovers line clearing via exploration
+
+---
+
+### Conclusion
+
+Experiment A improves stability and reward but does not enable
+learning of the core task (line clearing).
+
+---
+
+### Next steps
+
+Introduce delta-based reward (Experiment B)
+to provide feedback on board improvements after each move
+
+
+

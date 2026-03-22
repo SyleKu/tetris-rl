@@ -148,10 +148,13 @@ class TetrisEnv(gym.Env):
 
         reward = (
                 10.0 * lines
-                - 0.02 * aggregate_height(grid)
-                - 0.1 * holes(grid)
-                - 0.02 * bumpiness(grid)
+                - 0.01 * aggregate_height(grid)
+                - 0.05 * holes(grid)
+                - 0.01 * bumpiness(grid)
         )
+
+        # small positive reward for making a valid one
+        reward += 0.1
 
         terminated = self.board.is_game_over()
         truncated = False
