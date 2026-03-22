@@ -147,7 +147,7 @@ class TetrisEnv(gym.Env):
         grid = self.board.grid
 
         reward = (
-                5.0 * lines
+                10.0 * lines
                 - 0.02 * aggregate_height(grid)
                 - 0.1 * holes(grid)
                 - 0.02 * bumpiness(grid)
