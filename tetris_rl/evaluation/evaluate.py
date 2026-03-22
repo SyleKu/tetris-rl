@@ -30,6 +30,7 @@ def evaluate(algorithm: str, model_path: str, episodes: int = 20, max_steps_per_
         obs, _ = env.reset()
         total_reward = 0.0
         total_lines = 0
+        invalid_actions = 0
         step_count = 0
 
         terminated = False
@@ -46,6 +47,7 @@ def evaluate(algorithm: str, model_path: str, episodes: int = 20, max_steps_per_
             obs, reward, terminated, truncated_env, info = env.step(action)
             truncated = truncated or truncated_env
 
+            invalid_actions += int(info.get('invalid_action', False))
             total_reward += reward
             total_lines += info.get('lines_cleared', 0)
             step_count += 1
@@ -53,11 +55,17 @@ def evaluate(algorithm: str, model_path: str, episodes: int = 20, max_steps_per_
         rewards.append(total_reward)
         lines.append(total_lines)
 
+        valid_actions = step_count - invalid_actions
+        valid_ratio = valid_actions / step_count if step_count > 0 else 0.0
+
         print(
             f"Episode {episode + 1}: "
             f"reward={total_reward:.2f}, "
             f"lines={total_lines},"
             f"steps={step_count}, "
+            f"valid={valid_actions}, "
+            f"invalid={invalid_actions}, "
+            f"valid_ratio={valid_ratio:.4f}, "
             f"terminated={terminated}, "
             f"truncated={truncated}"
         )
@@ -72,6 +80,6 @@ if __name__ == "__main__":
     evaluate(
         algorithm="dqn",
         model_path="./results/checkpoints/dqn_tetris.zip",
-        episodes=1,
-        max_steps_per_episode=500
+        episodes=20,
+        max_steps_per_episode=2000
     )

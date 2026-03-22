@@ -80,33 +80,40 @@ class TetrisEnv(gym.Env):
         variants = PIECES[self.current_piece_name]
         piece = variants[rotation_idx % len(variants)]
 
+        # invalid action (out of bounds)
         if column + len(piece[0]) > self.width:
-            reward = -2.0
+            reward = -5.0
             terminated = False
-            return self._get_observation(), reward, terminated, False, {"invalid_action": True}
+            truncated = False
+            return self._get_observation(), reward, terminated, truncated, {"invalid_action": True}
 
+        # spawn collision (real game over)
         if self.board.check_collision(piece, -len(piece), column):
             reward = -10.0
             terminated = True
-            return self._get_observation(), reward, terminated, False, {"game_over": True}
+            truncated = False
+            return self._get_observation(), reward, terminated, truncated, {"game_over": True}
 
+        # valid move
         row = self._drop_height(piece, column)
         self.board.place_piece(piece, row, column)
         lines = self.board.clear_lines()
 
         grid = self.board.grid
         reward = (
-            1.0 * lines
-            - 0.05 * aggregate_height(grid)
-            - 0.2 * holes(grid)
-            - 0.05 * bumpiness(grid)
+            5.0 * lines
+            - 0.02 * aggregate_height(grid)
+            - 0.1 * holes(grid)
+            - 0.02 * bumpiness(grid)
         )
 
         terminated = self.board.is_game_over()
+        truncated = False
 
         if terminated:
             reward -= 5.0
 
+        # sample next piece
         self.current_piece_name, self.current_piece = self._sample_piece()
 
         obs = self._get_observation()
@@ -115,4 +122,4 @@ class TetrisEnv(gym.Env):
         if terminated:
             info["game_over"] = True
 
-        return obs, reward, terminated, False, info
+        return obs, reward, terminated, truncated, info
