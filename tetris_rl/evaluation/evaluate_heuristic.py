@@ -12,6 +12,7 @@ def evaluate_heuristic(episodes: int = 20, max_steps_per_episode: int | None = 1
 
     for episode in range(episodes):
         obs, _ = env.reset()
+
         total_reward = 0.0
         total_lines = 0
         step_count = 0
@@ -49,8 +50,10 @@ def evaluate_heuristic(episodes: int = 20, max_steps_per_episode: int | None = 1
     print(f"Average reward: {np.mean(rewards):.2f}")
     print(f"Average lines: {np.mean(lines):.2f}")
 
+    return rewards, lines
+
 if __name__ == "__main__":
     evaluate_heuristic(
-        episodes=1,
-        max_steps_per_episode=500,
+        episodes=20,
+        max_steps_per_episode=2000,
     )

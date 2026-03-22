@@ -25,50 +25,34 @@ class HeuristicAgent:
         self.weights = weights or HeuristicWeights()
 
     def select_action(self, env) -> int:
-        piece_name = env.current_piece_name
-        variants = PIECES[piece_name]
+        valid_actions = env.get_valid_actions()
 
         best_score = float("-inf")
-        best_action = None
+        best_action_idx = None
 
-        for rotation_idx, piece in enumerate(variants):
-            piece_width = len(piece[0])
+        for action_idx, (rotation_idx, column) in enumerate(valid_actions):
+            piece = PIECES[env.current_piece_name][rotation_idx]
 
-            for column in range(env.width):
+            board_copy = env.board.clone()
 
-                # skip piece if it doesn't fit
-                if column + piece_width > env.width:
-                    continue
+            row = -len(piece)
+            while not board_copy.check_collision(piece, row + 1, column):
+                row += 1
 
-                board_copy = env.board.clone()
+            board_copy.place_piece(piece, row, column)
+            lines_cleared = board_copy.clear_lines()
 
-                # check spawn collision
-                if board_copy.check_collision(piece, -len(piece), column):
-                    continue
+            score = score_board(
+                board_copy.grid,
+                lines_cleared=lines_cleared,
+                weights=self.weights,
+            )
 
-                # calculate drop
-                row = -len(piece)
-                while not board_copy.check_collision(piece, row + 1, column):
-                    row += 1
+            if score > best_score:
+                best_score = score
+                best_action_idx = action_idx
 
-                board_copy.place_piece(piece, row, column)
-                lines_cleared = board_copy.clear_lines()
-
-                score = score_board(
-                    board_copy.grid,
-                    lines_cleared=lines_cleared,
-                    weights=self.weights,
-                )
-
-                action = rotation_idx * env.width + column
-
-                if score > best_score:
-                    best_score = score
-                    best_action = action
-
-        if best_action is None:
+        if best_action_idx is None:
             return 0
 
-        return best_action
-
-
+        return best_action_idx

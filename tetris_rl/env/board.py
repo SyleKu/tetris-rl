@@ -46,7 +46,10 @@ class Board:
         if num_cleared > 0:
             new_grid = np.zeros_like(self.grid)
             remaining = np.delete(self.grid, full_rows, axis=0)
-            new_grid[-remaining.shape[0]:] = remaining
+
+            if remaining.shape[0] > 0:
+                new_grid[-remaining.shape[0]:] = remaining
+
             self.grid = new_grid
 
         return num_cleared
