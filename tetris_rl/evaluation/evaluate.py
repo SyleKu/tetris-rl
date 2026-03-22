@@ -70,7 +70,7 @@ def evaluate(algorithm: str, model_path: str, episodes: int = 20, max_steps_per_
 
 if __name__ == "__main__":
     evaluate(
-        algorithm="ppo",
+        algorithm="dqn",
         model_path="./results/checkpoints/dqn_tetris.zip",
         episodes=1,
         max_steps_per_episode=500
