@@ -249,4 +249,102 @@ Introduce delta-based reward (Experiment B)
 to provide feedback on board improvements after each move
 
 
+---
 
+## Reward-Shaping Experiment B (Delta reward)
+
+### Motivation
+Experiment A increased the reward for line clearing and reduced penalties,
+but line clearing may still remain too sparse for early learning.
+
+### Change
+Instead of relying only on absolute board penalties, reward shaping now includes
+feature delta between the board state before and after the move:
+
+- reward improvements in:
+  - aggregate height
+  - holes
+  - bumpiness
+- keep strong positive reward for line clearing
+- keep a small positive reward for valid moves
+
+### Hypothesis
+A delta-based reward may provide a denser learning signal and help PPO/DQN detect
+whether a move improved or worsened the board, even before line clearing occurs.
+
+### Planned evaluation
+
+- train PPO for 50k timesteps
+- evaluate with 20 episodes
+- compare against Experiment A
+
+---
+
+## Results — Rewards-Shaping Experiment B (Delta Reward)
+
+### Summary
+
+Experiment B introduced delta-based reward shaping by comparing board features
+before and after each move.
+
+Reward components:
+- strong reward for line clearing
+- small reward for valid moves
+- dense feedback based on changes in:
+  - aggregate height
+  - holes
+  - bumpiness
+
+### DQN Results
+
+| Timesteps |  Avg Reward |  Avg Lines |  Steps |
+|-----------|------------:|-----------:|-------:|
+| 10k       |      -14.51 |       0.00 | ~12–24 |
+| 50k       |      -18.36 |       0.00 | ~15–26 |
+| 100k      |      -19.39 |       0.05 | ~14–26 |
+
+**Observations:**
+
+- DQB survives somewhat longer than in earlier experiments
+- Very rare line clearing appears at 100k
+- No stable improvement with more training
+
+### PPO Results
+
+| Timesteps |  Avg Reward |  Avg Lines |  Steps |
+|-----------|------------:|-----------:|-------:|
+| 10k       |      -13.72 |       0.00 |  ~8–19 |
+| 50k       |      -10.45 |       0.15 |  ~9–23 |
+| 100k      |      -10.03 |       0.00 |  ~7–15 |
+
+
+**Observations:**
+
+- PPO shows the best result at 50k with occasional line clearing
+- However, this behavior is not stable
+- At 100k, line clearing disappears again
+
+### Interpolation
+
+Experiment B provides denser learning feedback than Experiment A and lead to
+slightly more promising behavior.
+
+However:
+- line clearing remains extremely rare
+- neither DQN nor PPO learns a robust policy
+- improvements are inconsistent and unstable
+
+### Conclusion
+
+Experiment B shows small progress over Experiment A, but it still does not solve
+the core problem.
+
+The agents may learn weak local improvements in board structure, but they do not
+reliably discover or optimize the true objective: clearing lines.
+
+### Next steps
+
+Planned next step: **Experiment C**
+- keep delta-based reward
+- make line clearing much more dominant
+- reduce risk of agents optimizing only proxy signals

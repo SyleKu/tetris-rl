@@ -131,30 +131,42 @@ class TetrisEnv(gym.Env):
                 reward,
                 terminated,
                 truncated,
-                {"invalid_action": True}
+                {"game_over": True}
             )
 
         # map agent action into valid placement list
         action_idx = int(action) % len(valid_actions)
         rotation_idx, column = valid_actions[action_idx]
-
         piece = PIECES[self.current_piece_name][rotation_idx]
+
+        # valid moves: compare board before and after
+        grid_before = self.board.grid.copy()
+
+        height_before = aggregate_height(grid_before)
+        holes_before = holes(grid_before)
+        bumpiness_before = bumpiness(grid_before)
 
         row = self._drop_height(piece, column)
         self.board.place_piece(piece, row, column)
         lines = self.board.clear_lines()
 
-        grid = self.board.grid
+        grid_after = self.board.grid.copy()
+
+        height_after = aggregate_height(grid_after)
+        holes_after = holes(grid_after)
+        bumpiness_after = bumpiness(grid_after)
+
+        delta_height = height_before - height_after
+        delta_holes = holes_before - holes_after
+        delta_bumpiness = bumpiness_before - bumpiness_after
 
         reward = (
                 10.0 * lines
-                - 0.01 * aggregate_height(grid)
-                - 0.05 * holes(grid)
-                - 0.01 * bumpiness(grid)
+                + 0.1 # small positive reward for making a valid one
+                + 0.05 * delta_height
+                + 0.2 * delta_holes
+                + 0.05 * delta_bumpiness
         )
-
-        # small positive reward for making a valid one
-        reward += 0.1
 
         terminated = self.board.is_game_over()
         truncated = False
