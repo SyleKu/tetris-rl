@@ -348,3 +348,99 @@ Planned next step: **Experiment C**
 - keep delta-based reward
 - make line clearing much more dominant
 - reduce risk of agents optimizing only proxy signals
+
+---
+
+## Rewards-Shaping Experiment C
+
+### Motivation
+
+Experiment B introduces delta-based reward shaping and produces denser feedback,
+but agents still failed to learn reliable line clearing.
+This suggests that the proxy signals (height, holes, bumpiness) remained too influential
+compared to the actual task objective.
+
+### Change
+Experiment C keeps delta-based reward shaping, but makes line clearing much more dominant:
+
+- increase line clearing reward from `10.0` to `50.0`
+- reduce delta-based shaping weights:
+  - `delta_height`: `0.05 -> 0.02`
+  - `delta_holes`: `0.20 -> 0.10`
+  - `delta_bumpiness`: `0.05 -> 0.02`
+- keep small positive reward for valid moves (`+0.1`)
+
+### Hypothesis
+If line clearing becomes the dominant reward component while delta rewards remain as auxiliary guidance,
+the agent may start discovering actual scoring behavior instead of only optimizing proxy board features.
+
+### Planned evaluation
+- train PPO for 50k timesteps
+- train DQN for 50k timesteps
+- compare:
+  - average reward
+  - average lines
+  - average episode length
+
+## Results — Rewards-Shaping Experiment C
+
+### Summary
+
+Experiment C kept delta-based reward shaping but made line clearing much more dominant.
+
+Changes:
+- increased line clearing reward strongly
+- reduced auxiliary delta-based shaping weights
+- kept a small reward for valid moves
+
+### DQN Results
+
+| Timesteps |  Avg Reward |  Avg Lines |  Steps |
+|-----------|------------:|-----------:|-------:|
+| 10k       |       -8.44 |       0.00 |  ~7–22 |
+| 50k       |       -6.18 |       0.05 | ~17–26 |
+| 100k      |      -10.29 |       0.00 | ~10–23 |
+
+**Observations:**
+- Slightly better rewards than previous experiments
+- One rare line-clearing event at 50k
+- No stable improvement with more training
+
+### PPO Results
+
+| Timesteps |  Avg Reward |  Avg Lines |  Steps |
+|-----------|------------:|-----------:|-------:|
+| 10k       |       -6.72 |       0.00 |  ~8–16 |
+| 50k       |       -6.94 |       0.00 |  ~8–15 |
+| 100k      |        0.79 |       0.15 |  ~8–19 |
+
+**Observations:**
+- PPO shows the strongest result so far
+- Occasional line clearing appears at 100k
+- However, line clearing remains rare and unstable
+
+### Interpretation
+
+Experiment C show slight progress compared to Experiments A and B,
+especially for PPO. However, the improvement is till too weak to conclude
+that the agents learned a robust line-clearing strategy.
+
+The mian limitation is likely no longer the reward function alone.
+Instead, the current observation space may be too compressed to represent the
+board state well enough for RL.
+
+### Conclusion
+
+Reward shaping alone is not sufficient.
+
+The next step should focus on improving state representation rather than
+continuing to tune the reward function.
+
+### Next step
+
+Experiment D: richer observation space
+
+Planned change:
+- replace compact board statistics with a richer board representation
+- e.g. flattened grid or per-column heights
+- keep Experiment C reward shaping unchanged.

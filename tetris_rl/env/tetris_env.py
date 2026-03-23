@@ -161,11 +161,11 @@ class TetrisEnv(gym.Env):
         delta_bumpiness = bumpiness_before - bumpiness_after
 
         reward = (
-                10.0 * lines
+                50.0 * lines
                 + 0.1 # small positive reward for making a valid one
-                + 0.05 * delta_height
-                + 0.2 * delta_holes
-                + 0.05 * delta_bumpiness
+                + 0.02 * delta_height
+                + 0.1 * delta_holes
+                + 0.02 * delta_bumpiness
         )
 
         terminated = self.board.is_game_over()
