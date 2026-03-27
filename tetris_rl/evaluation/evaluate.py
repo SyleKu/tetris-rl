@@ -76,3 +76,9 @@ if __name__ == "__main__":
         episodes=20,
         max_steps_per_episode=2000
     )
+    evaluate(
+        algorithm="ppo",
+        model_path="./results/checkpoints/ppo_tetris.zip",
+        episodes=20,
+        max_steps_per_episode=2000
+    )

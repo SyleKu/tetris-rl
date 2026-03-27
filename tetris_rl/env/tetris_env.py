@@ -4,7 +4,7 @@ import gymnasium as gym
 from gymnasium import spaces
 
 from tetris_rl.env.board import Board
-from tetris_rl.env.features import aggregate_height, bumpiness, holes, max_height
+from tetris_rl.env.features import aggregate_height, bumpiness, holes
 from tetris_rl.env.pieces import PIECES
 
 class TetrisEnv(gym.Env):
@@ -26,10 +26,10 @@ class TetrisEnv(gym.Env):
         self.action_space = spaces.Discrete(self.max_actions)
 
         # 5 scalar features + one-hot current place
-        obs_dim = 5 + len(self.piece_names)
+        obs_dim = self.height * self.width + len(self.piece_names)
         self.observation_space = spaces.Box(
-            low=-1000.0,
-            high=1000.0,
+            low=0.0,
+            high=1.0,
             shape=(obs_dim,),
             dtype=np.float32,
         )
@@ -55,20 +55,9 @@ class TetrisEnv(gym.Env):
         return vec
 
     def _get_observation(self):
-        grid = self.board.grid
-        scalar_features = np.array(
-            [
-                aggregate_height(grid),
-                holes(grid),
-                bumpiness(grid),
-                max_height(grid),
-                float(self.board.is_game_over())
-            ],
-            dtype=np.float32,
-        )
-
+        grid_features = self.board.grid.flatten().astype(np.float32)
         piece_features = self.piece_one_hot(self.current_piece_name)
-        return np.concatenate([scalar_features, piece_features]).astype(np.float32)
+        return np.concatenate([grid_features, piece_features]).astype(np.float32)
 
     def _enumerate_valid_actions(self):
         if self.board.is_game_over():

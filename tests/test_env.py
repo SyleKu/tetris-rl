@@ -14,7 +14,7 @@ def test_reset_observation_has_expected_shape():
     env = TetrisEnv()
     obs, _ = env.reset()
 
-    expected_dim = 5 + len(env.piece_names)
+    expected_dim = env.height * env.width + len(env.piece_names)
     assert obs.shape == (expected_dim,)
     assert obs.dtype == np.float32
 

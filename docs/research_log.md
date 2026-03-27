@@ -444,3 +444,98 @@ Planned change:
 - replace compact board statistics with a richer board representation
 - e.g. flattened grid or per-column heights
 - keep Experiment C reward shaping unchanged.
+
+---
+
+## Experiment D - Richer Observation Space
+
+### Motivation
+Experiments A-C suggest that reward shaping alone is not sufficient to produce
+robust line-clearing behavior.
+
+A likely bottleneck is the current observation space:
+the board is represented only by aggregated statistics, which may be too compressed
+to distinguish strategically different board states.
+
+### Change
+Replace compact statistics with a richer state representation:
+
+- use `grid.flatten()` to expose the full board layout
+- keep `piece_one_hot` to encode the current tetromino
+- keep reward function from Experiment C unchanged
+
+### Hypothesis
+A richer observation space should give the agent enough spatial information
+to learn placement strategies that support actual line clearing.
+
+### Planned evaluation
+- train PPO for 10k, 50k, and 100k timesteps
+- evaluate average reward, average lines, and average episode length
+- compare against Experiment C
+
+## Results - Experiment D (Flattened Grid Observation)
+
+### Summary
+
+Experiment D replaced the compact board statistics with a richer state representation:
+- full board encoded as `grid.flatten()`
+- current piece encoded via `piece_one_hot`
+- reward shaping from Experiment C kept unchanged
+
+### Heuristic Baseline
+
+- Average reward: ~40059
+- Average lines: ~797
+- Episodes consistently reach truncation limit (2000 steps)
+
+This confirms that the environment remains fully solvable under the richer observation design.
+
+### DQN Results
+
+| Timesteps |  Avg Reward |  Avg Lines |  Steps |
+|-----------|------------:|-----------:|-------:|
+| 10k       |       -6.04 |       0.05 | ~14–32 |
+| 50k       |       -6.91 |       0.00 |  ~7–16 |
+| 100k      |       33.02 |       0.80 | ~15–34 |
+
+
+**Observations:**
+- DQN shows the strongest improvement so far
+- At 100k, multiple episodes clear 1-4 lines
+- This is the first experiment with repeated line-clearing behavior
+- Performance is still far below heuristic baseline, but no longer near-zero
+
+### PPO Results
+
+| Timesteps |  Avg Reward |  Avg Lines |  Steps |
+|-----------|------------:|-----------:|-------:|
+| 10k       |       -7.26 |       0.00 |  ~7–16 |
+| 50k       |       -7.37 |       0.00 |  ~5–16 |
+| 100k      |       -7.54 |       0.00 | ~12–20 |
+
+
+**Observations:**
+- PPO does not improve under Experiment D
+- No line clearing observed
+- Reward remains almost constant across training durations
+
+### Interpretation
+
+Experiment D suggests that observation quality was major bottleneck.
+Replacing compressed board features with the full board layout significantly improved DQN performance.
+
+However:
+- improvement is currently limited to DQN
+- PPO remains stuck in a weak local strategy
+- learned behavior is still unstable and far from robust play
+
+### Conclusion
+
+Experiment D is the first setup that yields clear non-trivial progress.
+The richer observation space appears much more important than additional reward tuning.
+
+### Next step
+
+- continue with DQN under Experiment D
+- test longer runs (200k / 300k)
+- keep PPO as secondary comparison baseline
