@@ -4,12 +4,12 @@ import numpy as np
 
 from tetris_rl.evaluation.evaluate import evaluate
 
-def evaluate_seeds(algorithm: str, model_path: list[str], episodes: int = 20, max_steps_per_episode: int | None = 2000):
+def evaluate_seeds(algorithm: str, model_paths: list[str], episodes: int = 20, max_steps_per_episode: int | None = 2000):
     per_model_rows: list[dict] = []
     all_avg_rewards: list[float] = []
     all_avg_lines: list[float] = []
 
-    for model_path in model_path:
+    for model_path in model_paths:
         print(f"\n===Evaluating: {model_path} ===")
 
         result = evaluate(
@@ -33,8 +33,8 @@ def evaluate_seeds(algorithm: str, model_path: list[str], episodes: int = 20, ma
 
     mean_reward = float(np.mean(all_avg_rewards))
     std_reward = float(np.std(all_avg_rewards))
-    mean_lines = int(np.mean(all_avg_lines))
-    std_lines = int(np.std(all_avg_lines))
+    mean_lines = float(np.mean(all_avg_lines))
+    std_lines = float(np.std(all_avg_lines))
 
     _print_results_table(
         per_model_rows,
@@ -121,26 +121,34 @@ def _print_results_table(rows: list[dict], title: str) -> None:
         print(fmt_row(row))
 
 if __name__ == "__main__":
-    model_paths = collect_model_paths([
-        "dqn_expD_200000",
-        "dqn_expD_300000",
-    ])
-
+    model_paths = find_model_paths("dqn_expD_200000")
     evaluate_seeds(
         algorithm="dqn",
-        model_path=model_paths,
+        model_paths=model_paths,
         episodes=20,
         max_steps_per_episode=2000,
     )
 
-    model_paths = collect_model_paths([
-        "ppo_expD_200000",
-        "ppo_expD_300000",
-    ])
+    model_paths = find_model_paths("dqn_expD_300000")
+    evaluate_seeds(
+        algorithm="dqn",
+        model_paths=model_paths,
+        episodes=20,
+        max_steps_per_episode=2000,
+    )
 
+    model_paths = find_model_paths("ppo_expD_200000")
     evaluate_seeds(
         algorithm="ppo",
-        model_path=model_paths,
+        model_paths=model_paths,
+        episodes=20,
+        max_steps_per_episode=2000,
+    )
+
+    model_paths = find_model_paths("ppo_expD_300000")
+    evaluate_seeds(
+        algorithm="ppo",
+        model_paths=model_paths,
         episodes=20,
         max_steps_per_episode=2000,
     )
