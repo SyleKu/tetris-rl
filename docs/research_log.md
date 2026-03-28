@@ -539,3 +539,48 @@ The richer observation space appears much more important than additional reward 
 - continue with DQN under Experiment D
 - test longer runs (200k / 300k)
 - keep PPO as secondary comparison baseline
+
+
+## Interpretation - Experiment D
+
+Experiment D produced the first clear non-trivial learning results.
+
+Both DQN and PPO improved substantially once the observation space was changed
+from aggregated board statistics to the full flattened board representation.
+
+This suggests that the previous bottleneck was nto primarily the reward function,
+but the state representation.
+
+### Key finding
+A richer observation space made the task learnable for RL agents.
+
+### Algorithm comparison
+- DQN improved steadily and began clearing lines consistently
+- PPO improved even more stringly at higher training budgets (200k-300k)
+- PPO likely benefited from the richer state representation and more stable policy optimization
+
+### Conclusion
+The major breakthrough did not come from reward shaping alone, but from exposing
+the full board structure to the agent.
+
+
+## Multi-seed evaluation - Experiment D
+
+Using seeds 0, 1, and 2 confirmed that Experiment D produces robust learning behavior.
+
+### DQN
+- 200k: mean ~3.65 lines
+- 300k: mean ~3.57 lines
+
+DQN consistently learns non-trivial line-clearing behavior, but shows relatively high variance seeds.
+
+### PPO
+- 200k: mean ~2.10 lines
+- 300k: mean ~4.07 lines
+
+PPO improves more strongly with higher training budgets and achieves the best overall performance at 300k.
+
+### Interpretation
+These results confirm that the richer observation space introduced in Experiment D is the key factor that made the task learnable for both RL algorithms.
+
+PPO appears to scale better than DQN at higher training budgets, while DQN remains competitive but more variable across seeds.

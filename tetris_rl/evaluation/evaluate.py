@@ -1,5 +1,4 @@
 from pathlib import Path
-
 import numpy as np
 from stable_baselines3 import DQN, PPO
 
@@ -16,7 +15,7 @@ def load_model(algorithm: str, model_path: str):
     raise ValueError(f"Unsupported algorithm: {algorithm}")
 
 
-def evaluate(algorithm: str, model_path: str, episodes: int = 20, max_steps_per_episode: int | None = 1000):
+def evaluate(algorithm: str, model_path: str, episodes: int = 20, max_steps_per_episode: int | None = 2000):
     if not Path(model_path).exists():
         raise FileNotFoundError(f"Model not found: {model_path}")
 
@@ -62,12 +61,20 @@ def evaluate(algorithm: str, model_path: str, episodes: int = 20, max_steps_per_
             f"truncated={truncated}"
         )
 
+    avg_reward = float(np.mean(rewards))
+    avg_lines = float(np.mean(lines))
+
     print("\n--- Evaluation Results ---")
     print(f"Algorithm: {algorithm.upper()}")
-    print(f"Average reward: {np.mean(rewards):.2f}")
-    print(f"Average lines: {np.mean(lines):.2f}")
+    print(f"Average reward: {avg_reward:.2f}")
+    print(f"Average lines: {avg_lines:.2f}")
 
-    return rewards, lines
+    return {
+        "avg_reward": avg_reward,
+        "avg_lines": avg_lines,
+        "rewards": rewards,
+        "lines": lines,
+    }
 
 if __name__ == "__main__":
     evaluate(
