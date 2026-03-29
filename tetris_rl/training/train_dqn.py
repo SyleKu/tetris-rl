@@ -3,6 +3,7 @@ from stable_baselines3 import DQN
 from stable_baselines3.common.monitor import Monitor
 
 from tetris_rl.env.tetris_env import TetrisEnv
+from tetris_rl.models.tetris_extractor import TetrisCNNExtractor
 
 TOTAL_TIMESTEPS = 300_000
 SEEDS = [0, 1, 2]
@@ -13,18 +14,18 @@ def make_env(seed):
     env = Monitor(env)
     return env
 
-def main():
+def train():
     os.makedirs("./results/checkpoints", exist_ok=True)
     os.makedirs("./results/tb/dqn", exist_ok=True)
 
     for seed in SEEDS:
-        print(f"Training DQN with seeds={seed}")
+        print(f"\n=== Training DQN (Experiment E) with seeds={seed} ===")
 
         env = make_env(seed)
 
         model = DQN(
-            "MlpPolicy",
-            env,
+            "MultiInputPolicy",
+            env=env,
             learning_rate=1e-4,
             buffer_size=50_000,
             learning_starts=1_000,
@@ -37,16 +38,19 @@ def main():
             verbose=1,
             tensorboard_log=f"./results/tb/dqn/seed_{seed}/",
             seed=seed,
+            policy_kwargs={
+                "features_extractor_class": TetrisCNNExtractor,
+                "features_extractor_kwargs": {"features_dim": 128},
+            },
         )
 
         model.learn(total_timesteps=TOTAL_TIMESTEPS)
 
         save_path = f"./results/checkpoints/dqn_expD_{TOTAL_TIMESTEPS}_seed{seed}"
         model.save(save_path)
-
-        print(f"Saved model: {save_path}")
+        print(f"Saved model to: {save_path}.zip")
 
         env.close()
 
 if __name__ == "__main__":
-    main()
+    train()

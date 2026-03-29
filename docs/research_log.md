@@ -707,3 +707,32 @@ To address these issues:
   - longer episodes
   - curriculum learning
   - action space restructuring
+
+---
+
+## Experiment E (CNN + Improved Reward Shaping)
+
+### Motivation
+
+Experiment D showed that a richer observation space was necessary, but performance with the full 7-tetromino set remained unstable and highly seed-dependent.
+
+This suggests two remaining bottlenecks:
+1. The flattened board representation does not fully exploit the spatial structure of the grid.
+2. The reward signal is still too sparse and weak to guide stable learning.
+
+### Change
+
+Experiment E introduce:
+- a CNN-based feature extractor for the board state
+- separate one-hot encoding for the current tetromino
+- stronger reward shaping:
+  - larger line-clear reward
+  - stronger hole penalty
+  - absolute penalties for bad board states
+  - stronger terminal penalty
+
+### Hypothesis
+
+A CNN should better exploit the spatial structure of the Tetris board, while the improved reward should provide denser and more informative feedback.
+
+This combination is expected to improve training stability and reduce collapse across seeds.

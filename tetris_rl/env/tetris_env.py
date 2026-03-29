@@ -25,14 +25,24 @@ class TetrisEnv(gym.Env):
         self.max_actions = self._compute_max_actions()
         self.action_space = spaces.Discrete(self.max_actions)
 
-        # 5 scalar features + one-hot current place
-        obs_dim = self.height * self.width + len(self.piece_names)
-        self.observation_space = spaces.Box(
-            low=0.0,
-            high=1.0,
-            shape=(obs_dim,),
-            dtype=np.float32,
-        )
+
+        # Dict observation:
+        # - board: CNN-friendly shape (1, H, W)
+        # - piece: one-hot vector
+        self.observation_space = spaces.Dict({
+            "board": spaces.Box(
+                low=0.0,
+                high=1.0,
+                shape=(1, self.height, self.width),
+                dtype=np.float32,
+            ),
+            "piece": spaces.Box(
+                low=0.0,
+                high=1.0,
+                shape=(len(self.piece_names),),
+                dtype=np.float32,
+            ),
+        })
 
     def _compute_max_actions(self) -> int:
         max_actions = 0
@@ -150,18 +160,20 @@ class TetrisEnv(gym.Env):
         delta_bumpiness = bumpiness_before - bumpiness_after
 
         reward = (
-                50.0 * lines
+                100.0 * lines
                 + 0.1 # small positive reward for making a valid one
-                + 0.02 * delta_height
-                + 0.1 * delta_holes
-                + 0.02 * delta_bumpiness
+                + 0.05 * delta_height
+                + 0.3 * delta_holes
+                + 0.05 * delta_bumpiness
+                - 0.05 * height_after
+                - 0.2 * holes_after
         )
 
         terminated = self.board.is_game_over()
         truncated = False
 
         if terminated:
-            reward -= 5.0
+            reward -= 20.0
 
         self.current_piece_name, self.current_piece = self._sample_piece()
 
