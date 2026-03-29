@@ -799,3 +799,30 @@ This suggests that:
 ### Next step
 
 Revert to the successful Experiment D reward and keep the richer observation ideas isolated for future controlled testing.
+
+---
+
+## Experiment E2 (CNN with Experiment D reward)
+
+### Motivation
+
+Experiment E combined a CNN-based observation pipeline with a more aggressive reward design.
+The results collapsed completely, making it unclear whether the problem was caused by the CNN architecture or by the new reward shaping.
+
+To isolate the CNN effect, Experiment E2 keeps:
+- the CNN-based Dict observation (`board`, `piece`)
+- the custom CNN feature extractor
+
+but reverts the rewards function to the successful Experiment D design.
+
+### Hypothesis
+
+If the failure in Experiment E was mainly caused by overly punitive rewards,
+then CNN training with the Experiment D reward should recover at least part of the performance observed in Experiment D. 
+
+### Planned evaluation
+
+- PPO with 10k and 50k
+- DQN with 10k and 50k
+- seeds 0, 1, 2
+- compare against Experiment D and Experiment E
