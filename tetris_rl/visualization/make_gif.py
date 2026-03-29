@@ -56,13 +56,13 @@ def render_board_with_overlay(
     img_width = board_width_px
     img_height = PANEL_HEIGHT * board_height_px
 
-    image = Image.new("RGB", (board_width_px, board_height_px), BG_COLOR)
+    image = Image.new("RGB", (img_width, img_height), BG_COLOR)
     draw = ImageDraw.Draw(image)
     font = _get_font()
 
     # Draw info panel background
     draw.rectangle(
-        [0, 0, img_width, img_height],
+        [0, 0, img_width, PANEL_HEIGHT],
         fill=PANEL_BG_COLOR,
     )
 
