@@ -584,3 +584,126 @@ PPO improves more strongly with higher training budgets and achieves the best ov
 These results confirm that the richer observation space introduced in Experiment D is the key factor that made the task learnable for both RL algorithms.
 
 PPO appears to scale better than DQN at higher training budgets, while DQN remains competitive but more variable across seeds.
+
+
+
+## Experiment D (Full Grid Representation + Seeds)
+
+### Setup
+
+- Observation:
+  - Flattened grid (20x10 = 200 features)
+  - One-hot encoded current tetromino
+- Reward:
+  - Line clears: +50 per line
+  - Small shaping terms (height, holes, bumpiness)
+  - -5 penalty on game over
+
+- Algorithms:
+  - DQN, PPO
+- Training steps:
+  - 300'000
+- Seeds:
+  - 0, 1, 2
+- Evaluation:
+  - 20 episodes per model
+
+---
+
+### Results
+
+#### DQN (300k)
+
+| Seed  | Avg Reward | Avg Lines |
+|-------|------------|-----------|
+| 0     | -1.90      | 0.10      |
+| 1     | -6.61      | 0.00      |
+| 2     | -1.54      | 0.10      |
+
+**Aggregate:**
+- Reward: -3.35 ± 2.31
+- Lines: 0.07 ± 0.05
+
+---
+
+#### PPO (300k)
+
+| Seed  | Avg Reward | Avg Lines |
+|-------|------------|-----------|
+| 0     | -6.12      | 0.00      |
+| 1     | 22.89      | 0.60      |
+| 2     | -5.94      | 0.00      |
+
+
+**Aggregate:**
+- Reward: 3.61 ± 13.63
+- Lines: 0.20 ± 0.28
+
+---
+
+### Analysis
+
+The results show significant degradation compared to earlier runs of Experiment D.
+
+Key observations:
+
+1. **High variance across seeds**
+  - Some seeds achieve limited success (e.g., PPO seed1)
+  - Others completely fail to learn (0 lines)
+
+3. **Collapse of performance**
+  - Most models revert to near-zero line clears
+  - Rewards remain close to baseline penalty (~ -6)
+
+3. **Sparse reward problem**
+  - Line clears are too rare
+  - Agent receives mostly small negative or neutral rewards
+  - Learning signal is insufficient
+
+4. **Policy instability (especially DQN)**
+  - Strong sensitivity to initialization (seeds)
+  - No consistent improvement across runs
+
+5. **PPO slightly more robust**
+  - At least one seed learns partial behavior
+  - Still unreliable overall
+
+---
+
+### Interpretation
+
+This experiment highlights a critical limitation:
+
+> The current reward function is too sparse for stable learning.
+
+Even with full grid information, the agent struggles because:
+
+- meaningful rewards (line clears) occurs rarely
+- shaping signals are too weak to guide behavior
+- early game termination limits experience collection
+
+---
+
+### Conclusion
+
+- The full grid representation alone is not sufficient
+- Learning remains unstable and highly seed-dependent
+- The main bottleneck is now the **reward design**, not the observation
+
+---
+
+### Next Steps (Experiment E)
+
+To address these issues:
+
+1. Improve reward shaping:
+  - stronger penalties for holes and height
+  - better intermediate signals
+
+2. Introduce CNN-based policy
+  - exploit spatial structure of the grid
+
+3. Potential extensions:
+  - longer episodes
+  - curriculum learning
+  - action space restructuring
