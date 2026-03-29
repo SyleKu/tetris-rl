@@ -19,7 +19,7 @@ def train():
     os.makedirs("./results/tb/dqn", exist_ok=True)
 
     for seed in SEEDS:
-        print(f"\n=== Training DQN (Experiment E) with seeds={seed} ===")
+        print(f"\n=== Training DQN (Experiment E) with seed={seed} ===")
 
         env = make_env(seed)
 

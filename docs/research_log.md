@@ -736,3 +736,66 @@ Experiment E introduce:
 A CNN should better exploit the spatial structure of the Tetris board, while the improved reward should provide denser and more informative feedback.
 
 This combination is expected to improve training stability and reduce collapse across seeds.
+
+---
+
+## Experiment E (CNN + stronger reward shaping)
+
+### Setup
+
+Experiment E introduced two changes at once:
+
+1. A CNN-basd policy input using a Dict observation:
+  - `board`: 2D tensor `(1, H, W)`
+  - `piece: one-hot vector
+2. A more aggressive reward shaping design:
+  - stronger line-clear reward
+  - stronger hole and height penalties
+  - larger terminal penalty
+
+Models were trained with:
+- DQN and PPO
+- 10k and 50k timesteps
+- seeds 0, 1, 2
+
+### Results
+
+#### DQN
+
+| Steps | Mean Reward ± Std   | Mean Lines ± Std  |
+|-------|---------------------|-------------------|
+| 10k   | -48.50 ± 4.38       | 0.00 ± 0.00       |
+| 50k   | -48.19 ± 2.57       | 0.00 ± 0.00       |
+
+#### PPO
+
+| Steps | Mean Reward ± Std   | Mean Lines ± Std  |
+|-------|---------------------|-------------------|
+| 10k   | -48.71 ± 2.13       | 0.00 ± 0.00       |
+| 50k   | -49.74 ± 0.80       | 0.00 ± 0.00       |
+
+### Analysis
+
+Experiment E did not improve performance.
+
+Both DQN and PPO failed to clear lines in any run. Rewards remained strongly negative and highly consistent across seeds, indicating collapse to poor short-horizon behavior.
+
+The most likely reason is that the reward shaping became too punitive:
+- line clears remained too rare
+- penalties dominated nearly every episode
+- the agent received mostly negative feedback, making stable learning difficult
+
+Because Experiment E changed both the observation pipeline and the reward at the same time, it is difficult to isolate the exact cause. However, the reward design is the most likely bottleneck.
+
+### Conclusion
+
+Experiment E, in its current form, is worse than Experiment D.
+
+This suggests that:
+- CNN input alone is not enough
+- overly aggressive reward shaping can destroy learning
+- Experiment D remains the strongest baseline so far
+
+### Next step
+
+Revert to the successful Experiment D reward and keep the richer observation ideas isolated for future controlled testing.
