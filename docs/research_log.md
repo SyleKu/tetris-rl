@@ -826,3 +826,78 @@ then CNN training with the Experiment D reward should recover at least part of t
 - DQN with 10k and 50k
 - seeds 0, 1, 2
 - compare against Experiment D and Experiment E
+
+## Experiment E2 (CNN with Experiment D reward)
+
+### Motivation
+
+Experiment E combined a CNN-based observation pipeline with a more aggressive reward design and failed completely.
+To isolate the effect of the CNN architecture, Experiment E2 kept the CNN-based Dict observation and custom feature extractor, but reverted the reward function to the successful Experiment D formulation.
+
+### Setup
+
+- Observation:
+  - `board`: `(1, H ,W)` tensor
+  - `piece`: one-hot vector
+- Policy:
+  - custom CNN feature extractor
+  - `MultiInputPolicy`
+- Reward:
+  - same as Experiment D
+- Algorithms:
+  - DQN, PPO
+- Training budgets:
+  - 10k and 50k
+- Seeds:
+  - 0, 1, 2
+
+### Results
+
+#### DQN
+
+| Steps | Mean Reward ± Std   | Mean Lines ± Std  |
+|-------|---------------------|-------------------|
+| 10k   | -7.59 ± 4.46        | 0.07 ± 0.09       |
+| 50k   | -5.04 ± 5.17        | 0.07 ± 0.09       |
+
+#### PPO
+
+| Steps | Mean Reward ± Std   | Mean Lines ± Std  |
+|-------|---------------------|-------------------|
+| 10k   | -7.97 ± 1.04        | 0.00 ± 0.00       |
+| 50k   | -7.61 ± 0.35        | 0.00 ± 0.00       |
+
+### Analysis
+
+Experiment E2 partially recovered from the total collapse of Experiment E, confirming that the overly punitive reward in E was a major problem.
+
+However, performance remains clearly below Experiment D.
+
+Key observations:
+- DQN shows only very weak learning in one seed
+- PPO does not clear lines at all
+- CNN-based policies do not outperform the simpler flattened-grid MLP setup
+
+### Interpretation
+
+The results suggest that the CNN architecture is not currently beneficial in this project setting.
+
+Possible reasons:
+- the board is relatively small
+- the task is already difficult due to sparse success events
+- the simpler flattened representation may be easier to optimize with limited training budget
+
+### Conclusion
+
+Experiment E2 is better than Experiment E, but still worse than Experiment D.
+
+This indicates:
+- Experiment E mainly failed because of reward design
+- but CNN-based observation processing is also not an improvement in the current setup
+
+### Current best setup
+
+The strongest setup remains Experiment D:
+- flattened grid observation
+- one-hot tetromino encoding
+- Experiment D reward shaping

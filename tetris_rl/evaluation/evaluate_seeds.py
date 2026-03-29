@@ -121,7 +121,7 @@ def _print_results_table(rows: list[dict], title: str) -> None:
         print(fmt_row(row))
 
 if __name__ == "__main__":
-    model_paths = find_model_paths("dqn_expE_10000")
+    model_paths = find_model_paths("dqn_expE2_10000")
     evaluate_seeds(
         algorithm="dqn",
         model_paths=model_paths,
@@ -129,7 +129,7 @@ if __name__ == "__main__":
         max_steps_per_episode=2000,
     )
 
-    model_paths = find_model_paths("dqn_expE_50000")
+    model_paths = find_model_paths("dqn_expE2_50000")
     evaluate_seeds(
         algorithm="dqn",
         model_paths=model_paths,
@@ -137,7 +137,7 @@ if __name__ == "__main__":
         max_steps_per_episode=2000,
     )
 
-    model_paths = find_model_paths("ppo_expE_10000")
+    model_paths = find_model_paths("ppo_expE2_10000")
     evaluate_seeds(
         algorithm="ppo",
         model_paths=model_paths,
@@ -145,7 +145,7 @@ if __name__ == "__main__":
         max_steps_per_episode=2000,
     )
 
-    model_paths = find_model_paths("ppo_expE_50000")
+    model_paths = find_model_paths("ppo_expE2_50000")
     evaluate_seeds(
         algorithm="ppo",
         model_paths=model_paths,
