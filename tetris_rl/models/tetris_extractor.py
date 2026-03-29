@@ -13,7 +13,7 @@ class TetrisCNNExtractor(BaseFeaturesExtractor):
 
     def __init__(self, observation_space: spaces.Dict, features_dim: int = 128):
         # Compute the actual final feature dimension below.
-        super().__init__(observation_space, features_dim=1)
+        super().__init__(observation_space, features_dim=features_dim)
 
         board_shape = observation_space["board"].shape # (1, H, W)
         piece_dim = observation_space["piece"].shape[0]
