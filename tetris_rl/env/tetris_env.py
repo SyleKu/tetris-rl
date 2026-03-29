@@ -65,9 +65,13 @@ class TetrisEnv(gym.Env):
         return vec
 
     def _get_observation(self):
-        grid_features = self.board.grid.flatten().astype(np.float32)
-        piece_features = self.piece_one_hot(self.current_piece_name)
-        return np.concatenate([grid_features, piece_features]).astype(np.float32)
+        board_obs = self.board.grid.astype(np.float32)[None, :, :] # (1, H, W)
+        piece_obs = self.piece_one_hot(self.current_piece_name)
+
+        return {
+            "board": board_obs,
+            "piece": piece_obs,
+        }
 
     def _enumerate_valid_actions(self):
         if self.board.is_game_over():

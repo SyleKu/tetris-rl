@@ -5,7 +5,7 @@ from stable_baselines3.common.monitor import Monitor
 from tetris_rl.env.tetris_env import TetrisEnv
 from tetris_rl.models.tetris_extractor import TetrisCNNExtractor
 
-TOTAL_TIMESTEPS = 300_000
+TOTAL_TIMESTEPS = 10_000
 SEEDS = [0, 1, 2]
 
 def make_env(seed):
@@ -46,7 +46,7 @@ def train():
 
         model.learn(total_timesteps=TOTAL_TIMESTEPS)
 
-        save_path = f"./results/checkpoints/dqn_expD_{TOTAL_TIMESTEPS}_seed{seed}"
+        save_path = f"./results/checkpoints/dqn_expE_{TOTAL_TIMESTEPS}_seed{seed}"
         model.save(save_path)
         print(f"Saved model to: {save_path}.zip")
 

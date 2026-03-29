@@ -5,7 +5,7 @@ from stable_baselines3.common.monitor import Monitor
 from tetris_rl.env.tetris_env import TetrisEnv
 from tetris_rl.models.tetris_extractor import TetrisCNNExtractor
 
-TOTAL_TIMESTEPS = 300_000
+TOTAL_TIMESTEPS = 10_000
 SEEDS = [0, 1, 2]
 
 def make_env(seed):
@@ -41,7 +41,7 @@ def train():
             device="cpu", # recommended for PPO + MLP/CNN non-image-ish small models
             policy_kwargs={
                 "features_extractor_class": TetrisCNNExtractor,
-                "features_extractor_kwargs": {"features_dim": 128}
+                "features_extractor_kwargs": {"features_dim": 128},
             },
         )
 
