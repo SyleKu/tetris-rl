@@ -25,27 +25,17 @@ class TetrisEnv(gym.Env):
         self.max_actions = self._compute_max_actions()
         self.action_space = spaces.Discrete(self.max_actions)
 
-        # Dict observation:
-        # - board: CNN-friendly shape (1, H, W)
-        # - piece: one-hot vector
-        self.observation_space = spaces.Dict({
-            "board": spaces.Box(
-                low=0.0,
-                high=1.0,
-                shape=(1, self.height, self.width),
-                dtype=np.float32,
-            ),
-            "piece": spaces.Box(
-                low=0.0,
-                high=1.0,
-                shape=(len(self.piece_names),),
-                dtype=np.float32,
-            ),
-        })
+        obs_dim = self.height + self.width + len(self.piece_names)
+        self.observation_space = spaces.Box(
+            low=0.0,
+            high=1.0,
+            shape=(obs_dim,),
+            dtype=np.float32,
+        )
 
     def _compute_max_actions(self) -> int:
         max_actions = 0
-        for piece_name, variants in PIECES.items():
+        for _, variants in PIECES.items():
             count = 0
             for piece in variants:
                 piece_width = len(piece[0])
@@ -64,13 +54,9 @@ class TetrisEnv(gym.Env):
         return vec
 
     def _get_observation(self):
-        board_obs = self.board.grid.astype(np.float32)[None, :, :] # (1, H, W)
-        piece_obs = self.piece_one_hot(self.current_piece_name)
-
-        return {
-            "board": board_obs,
-            "piece": piece_obs,
-        }
+        grid_features = self.board.grid.flatten().astype(np.float32)
+        piece_features = self.piece_one_hot(self.current_piece_name)
+        return np.concatenate([grid_features, piece_features]).astype(np.float32)
 
     def _enumerate_valid_actions(self):
         if self.board.is_game_over():

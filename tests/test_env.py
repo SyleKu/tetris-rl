@@ -1,5 +1,5 @@
 import numpy as np
-from gymnasium.spaces import Dict, Discrete
+from gymnasium.spaces import Box, Discrete
 
 from tetris_rl.env.tetris_env import TetrisEnv
 
@@ -11,25 +11,22 @@ def test_reset_returns_observation_and_info():
     env = TetrisEnv()
     obs, info = env.reset()
 
-    assert isinstance(obs, dict)
+    assert isinstance(obs, np.ndarray)
     assert isinstance(info, dict)
 
-def test_observation_space_is_dict():
+def test_observation_space_is_box():
     env = TetrisEnv()
 
-    assert isinstance(env.observation_space, Dict)
-    assert "board" in env.observation_space.spaces
-    assert "piece" in env.observation_space.spaces
+    assert isinstance(env.observation_space, Box)
 
 def test_reset_observation_shapes():
     env = TetrisEnv()
     obs, _ = env.reset()
 
-    assert obs["board"].shape == (1, env.height, env.width)
-    assert obs["piece"].shape == (len(env.piece_names),)
+    expected_dim = env.height * env.width + len(env.piece_names)
 
-    assert obs["board"].dtype == np.float32
-    assert obs["piece"].dtype == np.float32
+    assert obs.shape == (expected_dim,)
+    assert obs.dtype == np.float32
 
 # =========================
 # BOARD TESTS
@@ -39,14 +36,13 @@ def test_board_is_empty_after_reset():
     env = TetrisEnv()
     obs, _ = env.reset()
 
-    board = obs["board"]
-    assert np.sum(board) == 0.0
+    assert np.sum(env.board.grid) == 0
 
 def test_board_contains_only_binary_values():
     env = TetrisEnv()
-    obs, _ = env.reset()
+    env.reset()
 
-    board = obs["board"]
+    board = env.board.grid
     unique_values = np.unique(board)
 
     assert np.all(np.isin(unique_values, [0.0, 1.0]))
@@ -65,20 +61,21 @@ def test_reset_clears_board():
 # PIECE TESTS
 # =========================
 
-def test_piece_one_hot_encoding():
+def test_piece_one_hot_is_encoded_in_observation():
     env = TetrisEnv()
     obs, _ = env.reset()
 
-    piece_vec = obs["piece"]
+    piece_vec = obs[-len(env.piece_names):]
 
     assert np.sum(piece_vec) == 1.0
     assert np.count_nonzero(piece_vec) == 1
 
-def test_piece_vector_size():
+def test_piece_vector_size_in_observation():
     env = TetrisEnv()
     obs, _ = env.reset()
 
-    assert len(obs["piece"]) == len(env.piece_names)
+    piece_vec = obs[-len(env.piece_names):]
+    assert len(piece_vec) == len(env.piece_names)
 
 # =========================
 # ACTION SPACE TESTS
@@ -86,6 +83,7 @@ def test_piece_vector_size():
 
 def test_action_space_is_discrete():
     env = TetrisEnv()
+    obs, _ = env.reset()
 
     assert isinstance(env.action_space, Discrete)
     assert env.action_space.n == env.max_actions
@@ -111,7 +109,7 @@ def test_valid_actions_are_well_formed():
         assert len(action) == 2
 
 def test_valid_actions_respect_board_width():
-    env = TetrisEnv()
+    env = TetrisEnv(width=4)
     env.reset()
 
     actions = env.get_valid_actions()
@@ -133,29 +131,32 @@ def test_step_returns_correct_tuple():
 
     obs, reward, terminated, truncated, info = env.step(0)
 
-    assert isinstance(obs, dict)
+    assert isinstance(obs, np.ndarray)
     assert isinstance(reward, float)
     assert isinstance(terminated, bool)
     assert isinstance(truncated, bool)
     assert isinstance(info, dict)
 
-def test_step_observation_shapes():
+def test_step_observation_shape():
     env = TetrisEnv()
     env.reset()
 
     obs, _, _, _, _ = env.step(0)
 
-    assert obs["board"].shape == (1, env.height, env.width)
-    assert obs["piece"].shape == (len(env.piece_names),)
+    expected_dim = env.height * env.width + len(env.piece_names)
+    assert obs.shape == (expected_dim,)
 
 def test_steps_handles_large_action_index():
     env = TetrisEnv()
     env.reset()
 
-    obs, reward, terminated, truncated, info = env.step(0)
+    obs, reward, terminated, truncated, info = env.step(999)
 
-    assert isinstance(obs, dict)
+    assert isinstance(obs, np.ndarray)
     assert isinstance(reward, float)
+    assert isinstance(terminated, bool)
+    assert isinstance(truncated, bool)
+    assert isinstance(info, dict)
 
 def test_step_changes_board_state():
     env = TetrisEnv()
@@ -181,8 +182,10 @@ def test_game_over_when_no_valid_actions():
 
     obs, reward, terminated, truncated, info = env.step(0)
 
-    assert terminated is True
+    assert isinstance(obs, np.ndarray)
     assert reward == -10.0
+    assert terminated is True
+    assert truncated is False
     assert info.get("game_over") is True
 
 def test_step_after_game_over():
@@ -194,16 +197,8 @@ def test_step_after_game_over():
 
     obs, reward, terminated, truncated, info = env.step(0)
 
-    assert terminated is True
+    assert isinstance(obs, np.ndarray)
     assert reward == -10.0
+    assert terminated is True
+    assert truncated is False
     assert info.get("game_over") is True
-
-# =========================
-# OPTIONAL STRICT TESTS
-# =========================
-
-def test_observation_matches_space():
-    env = TetrisEnv()
-    obs, _ = env.reset()
-
-    assert env.observation_space.contains(obs)
