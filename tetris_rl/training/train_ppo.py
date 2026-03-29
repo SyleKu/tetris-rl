@@ -18,7 +18,7 @@ def train():
     os.makedirs("./results/tb/ppo", exist_ok=True)
 
     for seed in SEEDS:
-        print(f"\n=== Training PPO (Experiment E2) with seed={seed} ===")
+        print(f"\n=== Training PPO (Experiment D) with seed={seed} ===")
 
         env = make_env(seed)
 

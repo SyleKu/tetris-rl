@@ -25,7 +25,7 @@ class TetrisEnv(gym.Env):
         self.max_actions = self._compute_max_actions()
         self.action_space = spaces.Discrete(self.max_actions)
 
-        obs_dim = self.height + self.width + len(self.piece_names)
+        obs_dim = self.height * self.width + len(self.piece_names)
         self.observation_space = spaces.Box(
             low=0.0,
             high=1.0,

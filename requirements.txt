@@ -6,3 +6,5 @@ pygame
 matplotlib
 pytest
 tensorboard
+imageio
+pillow
