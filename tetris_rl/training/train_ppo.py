@@ -4,7 +4,7 @@ from stable_baselines3.common.monitor import Monitor
 
 from tetris_rl.env.tetris_env import TetrisEnv
 
-TOTAL_TIMESTEPS = 300_000
+TOTAL_TIMESTEPS = 1_000_000
 SEEDS = [0, 1, 2]
 
 def make_env(seed):
