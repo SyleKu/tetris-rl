@@ -13,11 +13,11 @@ The GIF below shows a rollout of a trained reinforcement learning agent in the f
 
 ### DQN
 
-![Tetris RL Showcase](results/gifs/dqn_expD_1000000_seed0.gif)
+![Tetris RL Showcase](assets/dqn_expD_1000000_seed0.gif)
 
 ### PPO
 
-![Tetris RL Showcase](results/gifs/ppo_expD_1000000_seed0.gif)
+![Tetris RL Showcase](assets/ppo_expD_1000000_seed2.gif)
 
 
 ## Project Goals
@@ -73,7 +73,7 @@ tetris-rl/
 - [X] Train DQN agent
 - [X] Train PPO agent
 - [X] Evaluate performance
-- [ ] Add training plots
+- [X] Add training plots
 
 ---
 
