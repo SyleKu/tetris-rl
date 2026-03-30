@@ -11,14 +11,9 @@ The GIF below shows a rollout of a trained reinforcement learning agent in the f
 - Algorithm: DQN / PPO
 - Training budget: 1'000'000 timesteps
 
-### DQN
-
-![Tetris RL Showcase](assets/dqn_expD_1000000_seed0.gif)
-
-### PPO
-
-![Tetris RL Showcase](assets/ppo_expD_1000000_seed2.gif)
-
+| DQN                                                      | PPO                                                      |
+|----------------------------------------------------------|----------------------------------------------------------|
+| ![Tetris RL Showcase](assets/dqn_expD_1000000_seed0.gif) | ![Tetris RL Showcase](assets/ppo_expD_1000000_seed2.gif) | 
 
 ## Project Goals
 

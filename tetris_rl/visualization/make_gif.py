@@ -137,7 +137,7 @@ def generate_gif(
         )
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    imageio.mimsave(output_path, frames, duration= 1 / fps)
+    imageio.mimsave(output_path, frames, duration= 1 / fps, loop=0)
 
     print(f"Saved GIF to: {output_path}")
     print(f"Steps: {step_count}")
