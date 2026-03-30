@@ -1,6 +1,7 @@
 import numpy as np
 from gymnasium.spaces import Box, Discrete
 
+from tetris_rl.env.pieces import PIECES
 from tetris_rl.env.tetris_env import TetrisEnv
 
 # =========================
@@ -115,7 +116,7 @@ def test_valid_actions_respect_board_width():
     actions = env.get_valid_actions()
 
     for rotation_idx, column in actions:
-        piece = env.current_piece[rotation_idx]
+        piece = PIECES[env.current_piece_name][rotation_idx]
         piece_width = len(piece[0])
 
         assert column >= 0

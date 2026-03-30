@@ -54,7 +54,7 @@ def render_board_with_overlay(
     board_height_px = height * cell_size
 
     img_width = board_width_px
-    img_height = PANEL_HEIGHT * board_height_px
+    img_height = PANEL_HEIGHT + board_height_px
 
     image = Image.new("RGB", (img_width, img_height), BG_COLOR)
     draw = ImageDraw.Draw(image)
@@ -82,7 +82,7 @@ def render_board_with_overlay(
             y1 = y0 + cell_size
 
             color = FILLED_CELL_COLOR if grid[r, c] == 1 else EMPTY_CELL_COLOR
-            draw.rectangle((x0, y0, x1, y1), fill=color, outline=GRID_LINE_COLOR)
+            draw.rectangle([x0, y0, x1, y1], fill=color, outline=GRID_LINE_COLOR)
 
     return np.array(image)
 
@@ -144,11 +144,13 @@ def generate_gif(
     print(f"Total reward: {total_reward:.2f}")
     print(f"Total lines: {total_lines}")
 
+    env.close()
+
 if __name__ == "__main__":
     generate_gif(
-        algorithm="ppo",
-        model_path="./results/checkpoint/ppo_expD_300000_seed0.zip",
-        output_path="./results/gifs/ppo_expD_300000_seed0.gif",
+        algorithm="dqn",
+        model_path="./results/checkpoints/dqn_expD_300000_seed2.zip",
+        output_path="./results/gifs/dqn_expD_300000_seed2.gif",
         max_steps=200,
         fps=3,
         seed=0,

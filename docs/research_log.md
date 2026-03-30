@@ -901,3 +901,22 @@ The strongest setup remains Experiment D:
 - flattened grid observation
 - one-hot tetromino encoding
 - Experiment D reward shaping
+
+## Final status
+
+The strongest overall setup in this project is Experiment D:
+- flattened board observation
+- one-hot tetromino encoding
+- Experiment D reward shaping
+
+Key findings:
+- reward shaping alone was not sufficient
+- observation design was the main breakthrough
+- CNN-based variants (E, E2) did not outperform the simpler flattened baseline
+- PPO and DQN both learned partially, bit performance far below the heuristic baseline
+- full tetromino Tetris remains significantly harder than the reduced setup
+
+Final artifacts:
+- seeded DQN/PPO checkpoints
+- heuristic evaluation
+- GIF visualization of trained agent behavior

@@ -1,4 +1,3 @@
-import random
 import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
@@ -44,9 +43,8 @@ class TetrisEnv(gym.Env):
         return max_actions
 
     def _sample_piece(self):
-        name = random.choice(self.piece_names)
-        variants = PIECES[name]
-        return name, variants
+        idx = self.np_random.integers(len(self.piece_names))
+        return self.piece_names[idx]
 
     def piece_one_hot(self, piece_name: str) -> np.ndarray:
         vec = np.zeros(len(self.piece_names), dtype=np.float32)
@@ -58,11 +56,14 @@ class TetrisEnv(gym.Env):
         piece_features = self.piece_one_hot(self.current_piece_name)
         return np.concatenate([grid_features, piece_features]).astype(np.float32)
 
-    def _enumerate_valid_actions(self):
+    def _enumerate_valid_actions(self, piece_name: str | None = None):
         if self.board.is_game_over():
             return []
 
-        variants = PIECES[self.current_piece_name]
+        if piece_name is None:
+            piece_name = self.current_piece_name
+
+        variants = PIECES[piece_name]
         valid_actions = []
 
         for rotation_idx, piece in enumerate(variants):
@@ -83,7 +84,7 @@ class TetrisEnv(gym.Env):
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
         self.board = Board(height=self.height, width=self.width)
-        self.current_piece_name, self.current_piece = self._sample_piece()
+        self.current_piece_name = self._sample_piece()
         return self._get_observation(), {}
 
     def _drop_height(self, piece, column: int):
@@ -156,13 +157,16 @@ class TetrisEnv(gym.Env):
                 + 0.02 * delta_bumpiness
         )
 
-        terminated = self.board.is_game_over()
+        next_piece_name = self._sample_piece()
+
+        next_valid_actions = self._enumerate_valid_actions(piece_name=next_piece_name)
+        terminated = self.board.is_game_over() or len(next_valid_actions) == 0
         truncated = False
 
         if terminated:
             reward -= 5.0
 
-        self.current_piece_name, self.current_piece = self._sample_piece()
+        self.current_piece_name = next_piece_name
 
         obs = self._get_observation()
         info = {"lines_cleared": lines}

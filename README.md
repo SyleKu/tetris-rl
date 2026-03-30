@@ -51,10 +51,10 @@ tetris-rl/
 - [X] Feature extraction (height, holes, bumpiness)
 - [X] Implement Gymnasium environment
 - [X] Add heuristic baseline
-- [ ] Train DQN agent
-- [ ] Train PPO agent
-- [ ] Evaluate performance
-- [ ] Add training plots
+- [X] Train DQN agent
+- [X] Train PPO agent
+- [X] Evaluate performance
+- [] Add training plots
 
 ---
 
