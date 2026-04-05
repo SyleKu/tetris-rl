@@ -1,5 +1,10 @@
 # Tetris-RL
 
+![GitHub release](https://img.shields.io/github/v/release/SyleKu/tetris-rl)
+![Python](https://img.shields.io/badge/Python-3.x-blue)
+![RL](https://img.shields.io/badge/Reinforcement%20Learning-active-green)
+![Gym](https://img.shields.io/badge/Gymnasium-compatible-orange)
+
 Reinforcement Learning agent for Tetris using a custom Gymnasium environment.
 
 ## Showcase
