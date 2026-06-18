@@ -54,5 +54,9 @@ class Board:
 
         return num_cleared
 
+    def can_spawn(self, piece, col: int) -> bool:
+        row = -len(piece)
+        return not self.check_collision(piece, row, col)
+
     def is_game_over(self) -> bool:
         return bool(np.any(self.grid[0] == 1))

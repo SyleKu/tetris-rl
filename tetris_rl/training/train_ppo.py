@@ -1,52 +1,52 @@
 import os
-from stable_baselines3 import PPO
+
+from sb3_contrib import MaskablePPO
+from sb3_contrib.common.wrappers import ActionMasker
 from stable_baselines3.common.monitor import Monitor
 
+from tetris_rl.config import PPO_EXPF, TrainConfig
 from tetris_rl.env.tetris_env import TetrisEnv
 
-TOTAL_TIMESTEPS = 1_000_000
-SEEDS = [0, 1, 2]
 
-def make_env(seed):
-    env = TetrisEnv()
-    env.reset(seed=seed)
+def _mask_fn(env):
+    return env.action_masks()
+
+
+def make_env(seed, reward_config):
+    env = TetrisEnv(reward_config=reward_config)
+    env = ActionMasker(env, _mask_fn)
     env = Monitor(env)
+    env.reset(seed=seed)
     return env
 
-def train():
+
+def train(config: TrainConfig = PPO_EXPF):
     os.makedirs("./results/checkpoints", exist_ok=True)
     os.makedirs("./results/tb/ppo", exist_ok=True)
 
-    for seed in SEEDS:
-        print(f"\n=== Training PPO (Experiment D) with seed={seed} ===")
+    for seed in config.seeds:
+        print(f"\n=== Training MaskablePPO ({config.experiment}) with seed={seed} ===")
 
-        env = make_env(seed)
+        env = make_env(seed, config.reward)
 
-        model = PPO(
-            'MlpPolicy',
+        model = MaskablePPO(
+            "MlpPolicy",
             env=env,
-            learning_rate=3e-4,
-            n_steps=2048,
-            batch_size=64,
-            gamma=0.99,
-            gae_lambda=0.95,
-            clip_range=0.2,
-            ent_coef=0.01,
-            vf_coef=0.5,
-            max_grad_norm=0.5,
             verbose=1,
             tensorboard_log=f"./results/tb/ppo/seed_{seed}/",
             seed=seed,
-            device="cpu", # recommended for PPO + MLP/CNN non-image-ish small models
+            device="cpu",  # recommended for MLP policies on small, non-image observations
+            **config.hyperparams,
         )
 
-        model.learn(total_timesteps=TOTAL_TIMESTEPS)
+        model.learn(total_timesteps=config.total_timesteps)
 
-        save_path = f"./results/checkpoints/ppo_expD_{TOTAL_TIMESTEPS}_seed{seed}"
+        save_path = config.checkpoint_path(seed)
         model.save(save_path)
         print(f"Saved model to: {save_path}.zip")
 
         env.close()
+
 
 if __name__ == "__main__":
     train()

@@ -1,8 +1,11 @@
 from pathlib import Path
+
 import numpy as np
-from stable_baselines3 import DQN, PPO
+from sb3_contrib import MaskablePPO
+from stable_baselines3 import DQN
 
 from tetris_rl.env.tetris_env import TetrisEnv
+
 
 def load_model(algorithm: str, model_path: str):
     algorithm = algorithm.lower()
@@ -10,12 +13,35 @@ def load_model(algorithm: str, model_path: str):
     if algorithm == "dqn":
         return DQN.load(model_path)
     elif algorithm == "ppo":
-        return PPO.load(model_path)
+        # PPO checkpoints are trained with MaskablePPO (see train_ppo.py)
+        return MaskablePPO.load(model_path)
 
     raise ValueError(f"Unsupported algorithm: {algorithm}")
 
 
-def evaluate(algorithm: str, model_path: str, episodes: int = 20, max_steps_per_episode: int | None = 2000):
+def _predict(model, obs, env):
+    """Predict deterministically, supplying the action mask for maskable models."""
+    if isinstance(model, MaskablePPO):
+        action, _ = model.predict(
+            obs, deterministic=True, action_masks=env.action_masks()
+        )
+    else:
+        action, _ = model.predict(obs, deterministic=True)
+    return int(action)
+
+
+def evaluate(
+    algorithm: str,
+    model_path: str,
+    episodes: int = 20,
+    max_steps_per_episode: int | None = 2000,
+    seed: int = 0,
+):
+    """Evaluate a checkpoint.
+
+    Each episode ``i`` is reset with ``seed + i`` so the piece sequence is fixed
+    and the reported metrics are reproducible across runs.
+    """
     if not Path(model_path).exists():
         raise FileNotFoundError(f"Model not found: {model_path}")
 
@@ -26,7 +52,7 @@ def evaluate(algorithm: str, model_path: str, episodes: int = 20, max_steps_per_
     lines = []
 
     for episode in range(episodes):
-        obs, _ = env.reset()
+        obs, _ = env.reset(seed=seed + episode)
         total_reward = 0.0
         total_lines = 0
         step_count = 0
@@ -39,8 +65,7 @@ def evaluate(algorithm: str, model_path: str, episodes: int = 20, max_steps_per_
                 truncated = True
                 break
 
-            action, _ = model.predict(obs, deterministic=True)
-            action = int(action)
+            action = _predict(model, obs, env)
 
             obs, reward, terminated, truncated_env, info = env.step(action)
             truncated = truncated or truncated_env
@@ -76,16 +101,21 @@ def evaluate(algorithm: str, model_path: str, episodes: int = 20, max_steps_per_
         "lines": lines,
     }
 
+
 if __name__ == "__main__":
+    from tetris_rl.config import DQN_EXPF, PPO_EXPF
+
     evaluate(
         algorithm="dqn",
-        model_path="./results/checkpoints/dqn_tetris.zip",
+        model_path=f"{DQN_EXPF.checkpoint_path(seed=0)}.zip",
         episodes=20,
-        max_steps_per_episode=2000
+        max_steps_per_episode=2000,
+        seed=0,
     )
     evaluate(
         algorithm="ppo",
-        model_path="./results/checkpoints/ppo_tetris.zip",
+        model_path=f"{PPO_EXPF.checkpoint_path(seed=0)}.zip",
         episodes=20,
-        max_steps_per_episode=2000
+        max_steps_per_episode=2000,
+        seed=0,
     )

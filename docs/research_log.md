@@ -920,3 +920,158 @@ Final artifacts:
 - seeded DQN/PPO checkpoints
 - heuristic evaluation
 - GIF visualization of trained agent behavior
+
+---
+
+## Experiment F (Action Masking + Fixed Encoding + Config-Driven Runs)
+
+### Motivation
+
+Experiments A–E2 all shared a subtle but fundamental flaw in the action space.
+The agent's discrete action was mapped onto the list of currently-legal
+placements via `action_idx = action % len(valid_actions)`. Because the legal set
+is recomputed every step and its length changes with the board and the current
+piece, **the same action integer meant a different placement on almost every
+step**. There were no invalid actions, but the mapping was non-stationary: the
+policy could never learn a stable association between an action and an outcome,
+which plausibly contributed to the seed-dependent collapse seen in Experiment D.
+
+A second, separate pain point was reproducibility/bookkeeping: reward weights and
+hyperparameters lived as inline magic numbers in the env and training scripts, so
+only the *latest* experiment survived in code (git archaeology was required to
+reconstruct earlier ones), and evaluation used a fresh RNG each run.
+
+### Change
+
+Three coupled changes, none of which touch the Experiment D observation or reward
+*values* (so this isolates the action-space/tooling effect):
+
+1. **Fixed action↔placement encoding + action masking.**
+   - The action space is now `Discrete(max_rotations * width)` (= `Discrete(40)`),
+     and an action decodes deterministically via `divmod(action, width)` →
+     `(rotation_idx, column)`. A given integer therefore always denotes the same
+     geometric placement, independent of board/piece.
+   - `TetrisEnv.action_masks()` returns a boolean legality mask over the fixed
+     action set; `encode_action()` is the inverse used by the heuristic.
+   - PPO now trains with **`MaskablePPO`** (sb3-contrib) + an `ActionMasker`
+     wrapper, so illegal placements are never sampled.
+   - DQN has no native masking in SB3, so illegal placements terminate the
+     episode with `-invalid_action_penalty` (documented limitation; MaskablePPO is
+     the recommended path).
+   - Bonus fix: `_can_spawn_piece` now checks all rotations/columns (was
+     rotation-0 only), so game-over is no longer declared prematurely.
+
+2. **Seeded, reproducible evaluation.** `evaluate()` resets episode `i` with
+   `seed + i`, fixing the piece sequence so reported metrics are reproducible
+   across runs; prediction is mask-aware for `MaskablePPO`.
+
+3. **Config-driven experiments.** Reward coefficients and hyperparameters moved
+   into `tetris_rl/config.py` (`RewardConfig`, `TrainConfig`, with `DQN_EXPD` /
+   `PPO_EXPD` presets), so a past experiment is reproduced by instantiating a
+   config rather than editing magic numbers.
+
+The reward used here is unchanged from Experiment D (`line_clear=50`,
+`valid_move=0.1`, `delta_height=0.02`, `delta_holes=0.1`, `delta_bumpiness=0.02`,
+`-5` spawn-fail, `-10` game-over), with the added `-10` invalid-action penalty
+that only applies to unmasked (DQN) runs.
+
+### Hypothesis
+
+A *stationary* action→placement mapping plus masking should make the learning
+signal far more consistent than the old modulo scheme, especially for the masked
+PPO agent, which can no longer waste probability mass on illegal actions. This is
+expected to reduce the seed-dependent collapse observed in Experiment D rather
+than to change the achievable ceiling (the observation/reward are unchanged).
+
+### Setup
+
+- Observation: flattened 20×10 grid + 7-dim piece one-hot (`Box(207,)`),
+  unchanged from Experiment D.
+- Action space: `Discrete(40)`, fixed `divmod` encoding + `action_masks()`.
+- Algorithms:
+  - PPO → `MaskablePPO` + `ActionMasker` (true masking)
+  - DQN → standard DQN (no masking; invalid placement = terminal penalty)
+- Reward: Experiment D values (see above).
+- Config: `PPO_EXPD` / `DQN_EXPD` in `tetris_rl/config.py`.
+- Seeds: 0, 1, 2.
+
+### Validation so far (engineering, not learning)
+
+- Full test suite passes (37/37) after the action-space rewrite.
+- Mask pipeline verified end-to-end through the `Monitor → ActionMasker →
+  TetrisEnv` chain via the exact `get_action_masks()` call MaskablePPO uses.
+- The heuristic baseline still works under the new encoding (≈198 lines / 500
+  steps), and its chosen action is always inside the mask.
+
+### Evaluation
+
+- Retrained DQN and `MaskablePPO` under `DQN_EXPD` / `PPO_EXPD` (the pre-change
+  `*_expD_1000000` checkpoints were incompatible — different action space and
+  plain-PPO vs `MaskablePPO` — and were regenerated under the same prefix).
+- Evaluated with `evaluate_seeds`: 20 episodes per seed, 2000-step truncation,
+  seeded resets (`seed + episode`).
+
+### Results
+
+#### DQN (expD reward, no masking — invalid placement = terminal penalty)
+
+| Seed  | Avg Reward | Avg Lines |
+|-------|-----------:|----------:|
+| 0     |      21.94 |      0.65 |
+| 1     |      24.29 |      0.70 |
+| 2     |      11.86 |      0.45 |
+
+**Aggregate:** reward `19.37 ± 5.39`, lines `0.60 ± 0.11`
+
+#### MaskablePPO (expD reward, true action masking)
+
+| Seed  | Avg Reward | Avg Lines |
+|-------|-----------:|----------:|
+| 0     |     134.56 |      2.95 |
+| 1     |     144.48 |      3.15 |
+| 2     |     136.52 |      3.00 |
+
+**Aggregate:** reward `138.52 ± 4.29`, lines `3.03 ± 0.08`
+
+### Analysis
+
+This is the largest and most *robust* improvement in the project so far, and it
+came from the action-space fix alone — the observation and reward are identical
+to Experiment D.
+
+- **MaskablePPO is the breakthrough.** Lines went from Experiment D's
+  ≈`0.20 ± 0.28` (often zero, one lucky seed) to `3.03 ± 0.08` — every seed now
+  reliably clears ~3 lines, with several episodes reaching 5–7. Crucially the
+  **cross-seed std collapsed** (lines std `0.28 → 0.08`, reward std `~13.6 →
+  4.29`): the seed-dependent collapse that defined Experiment D is gone.
+- **DQN also improved** (`0.07 → 0.60` lines) despite having no native masking —
+  it benefits from the now-stationary action↔placement mapping — but it remains
+  far weaker and more variable than the masked PPO, and many of its episodes end
+  on the `-10` invalid-action penalty after only 2–10 steps.
+- **Still far below the heuristic** (~797 lines). The masked PPO clears a handful
+  of lines and then tops out around 33–54 steps; it does not yet survive to the
+  2000-step truncation. The agent has learned to *clear lines* but not to
+  *sustain* play.
+
+### Interpretation
+
+The non-stationary `action % len(valid_actions)` mapping — not the reward
+sparsity emphasized at the end of Experiment D — was the dominant remaining
+bottleneck. Giving the policy a stable action semantics (and, for PPO, never
+letting it sample illegal placements) was enough to turn the previously
+unreliable PPO into a consistent multi-line-clearing agent across all seeds.
+
+### Conclusion
+
+Experiment F replaces Experiment D as the strongest setup in the project.
+Action masking + a fixed encoding produced both higher mean performance and
+dramatically lower variance, confirming the hypothesis that the action space,
+not reward shaping, was the binding constraint. MaskablePPO is now the
+recommended algorithm; DQN is kept as a (masking-less) comparison baseline.
+
+### Next step
+
+The remaining gap is **survival/long-horizon play**, not line discovery. Natural
+follow-ups: longer training budgets now that the signal is stable, mask-aware
+exploration tuning for DQN, and revisiting the survival-vs-clearing reward
+balance (e.g. the `expD_strong_penalty` preset) under the masked setup.

@@ -1,6 +1,7 @@
 numpy
 gymnasium
 stable-baselines3
+sb3-contrib
 torch
 pygame
 matplotlib

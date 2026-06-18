@@ -3,7 +3,8 @@ from pathlib import Path
 import imageio.v2 as imageio
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
-from stable_baselines3 import DQN, PPO
+from sb3_contrib import MaskablePPO
+from stable_baselines3 import DQN
 
 from tetris_rl.env.tetris_env import TetrisEnv
 
@@ -23,7 +24,7 @@ def load_model(algorithm: str, model_path: str):
     if algorithm == "dqn":
         return DQN.load(model_path)
     elif algorithm == "ppo":
-        return PPO.load(model_path)
+        return MaskablePPO.load(model_path)
 
     raise ValueError(f"Unsupported algorithm: {algorithm}")
 
@@ -118,7 +119,12 @@ def generate_gif(
     )
 
     while not (terminated or truncated) and step_count < max_steps:
-        action, _ = model.predict(obs, deterministic=True)
+        if isinstance(model, MaskablePPO):
+            action, _ = model.predict(
+                obs, deterministic=True, action_masks=env.action_masks()
+            )
+        else:
+            action, _ = model.predict(obs, deterministic=True)
         action = int(action)
 
         obs, reward, terminated, truncated, info = env.step(action)
@@ -146,11 +152,67 @@ def generate_gif(
 
     env.close()
 
+
+# Checkpoints are named "{algorithm}_{experiment}_{timesteps}_seed{n}.zip"
+# (see TrainConfig.checkpoint_prefix). The leading token is the algorithm, which
+# is all load_model needs — so we can render every checkpoint without hardcoding
+# experiments or seed ranges.
+SUPPORTED_ALGORITHMS = {"dqn", "ppo"}
+
+
+def _algorithm_from_filename(checkpoint_path: Path) -> str | None:
+    """Infer the algorithm from a checkpoint filename, or None if unsupported."""
+    algorithm = checkpoint_path.stem.split("_", 1)[0].lower()
+    return algorithm if algorithm in SUPPORTED_ALGORITHMS else None
+
+
+def generate_all_gifs(
+        checkpoint_dir: str = "./results/checkpoints",
+        output_dir: str = "./results/gifs",
+        max_steps: int = 200,
+        fps: int = 3,
+        seed: int | None = 0,
+        overwrite: bool = True,
+):
+    """Render one GIF per checkpoint found in ``checkpoint_dir``.
+
+    Every ``*.zip`` is discovered automatically, so new seeds or new experiments
+    are picked up without code changes. The output GIF mirrors the checkpoint
+    name (e.g. ``ppo_expF_1000000_seed0.zip`` -> ``ppo_expF_1000000_seed0.gif``).
+    """
+    checkpoints = sorted(Path(checkpoint_dir).glob("*.zip"))
+    if not checkpoints:
+        print(f"No checkpoints (*.zip) found in {checkpoint_dir}")
+        return
+
+    print(f"Found {len(checkpoints)} checkpoint(s) in {checkpoint_dir}")
+
+    for checkpoint in checkpoints:
+        algorithm = _algorithm_from_filename(checkpoint)
+        if algorithm is None:
+            print(f"Skipping {checkpoint.name}: unrecognized algorithm prefix")
+            continue
+
+        output_path = Path(output_dir) / f"{checkpoint.stem}.gif"
+        if output_path.exists() and not overwrite:
+            print(f"Skipping {checkpoint.name}: {output_path} already exists")
+            continue
+
+        print(f"\n--- Rendering {checkpoint.name} ({algorithm.upper()}) ---")
+        generate_gif(
+            algorithm=algorithm,
+            model_path=str(checkpoint),
+            output_path=str(output_path),
+            max_steps=max_steps,
+            fps=fps,
+            seed=seed,
+        )
+
+
 if __name__ == "__main__":
-    generate_gif(
-        algorithm="dqn",
-        model_path="./results/checkpoints/dqn_expD_300000_seed2.zip",
-        output_path="./results/gifs/dqn_expD_300000_seed2.gif",
+    generate_all_gifs(
+        checkpoint_dir="./results/checkpoints",
+        output_dir="./results/gifs",
         max_steps=200,
         fps=3,
         seed=0,

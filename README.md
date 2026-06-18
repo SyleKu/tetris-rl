@@ -47,18 +47,37 @@ The GIF below shows a rollout of a trained reinforcement learning agent in the f
 
 ```text
 tetris-rl/
-├── configs/
+├── assets/                     # showcase GIFs used in this README
 ├── docs/
+│   └── research_log.md         # narrative of design decisions & experiments
 ├── results/
-│   └── gifs/
+│   ├── checkpoints/            # trained model .zip files
+│   ├── gifs/                   # rendered rollout GIFs
+│   └── tb/                     # TensorBoard logs (dqn/, ppo/)
 ├── tests/
+│   ├── test_board.py
+│   ├── test_env.py
+│   └── test_features.py
 └── tetris_rl/
+    ├── config.py
     ├── agents/
+    │   └── heuristic.py
     ├── env/
+    │   ├── board.py
+    │   ├── features.py
+    │   ├── pieces.py
+    │   └── tetris_env.py
     ├── evaluation/
+    │   ├── evaluate.py
+    │   ├── evaluate_heuristic.py
+    │   └── evaluate_seeds.py
     ├── models/
+    │   └── tetris_extractor.py
     ├── training/
+    │   ├── train_dqn.py
+    │   └── train_ppo.py
     └── visualization/
+        └── make_gif.py
 ```
 
 ---
@@ -204,7 +223,7 @@ This project demonstrates initial learning behavior in Tetris using standard rei
 
 ### Advanced RL Approaches
 
-- [ ] Implement **action masking** to prevent invalid moves
+- [x] Implement **action masking** to prevent invalid moves (fixed action↔placement mapping + `TetrisEnv.action_masks()`, trained via `MaskablePPO`)
 - [ ] Try **Curriculum Learning** (start with smaller board sizes)
 - [ ] Investigate **imitation learning** from heuristic policies
 - [ ] Explore **Monte Carlo Tree Search (MCTS)** or planning-based approaches

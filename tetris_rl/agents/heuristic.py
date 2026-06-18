@@ -28,9 +28,9 @@ class HeuristicAgent:
         valid_actions = env.get_valid_actions()
 
         best_score = float("-inf")
-        best_action_idx = None
+        best_action = None
 
-        for action_idx, (rotation_idx, column) in enumerate(valid_actions):
+        for rotation_idx, column in valid_actions:
             piece = PIECES[env.current_piece_name][rotation_idx]
 
             board_copy = env.board.clone()
@@ -50,9 +50,10 @@ class HeuristicAgent:
 
             if score > best_score:
                 best_score = score
-                best_action_idx = action_idx
+                # encode into the env's fixed action space
+                best_action = env.encode_action(rotation_idx, column)
 
-        if best_action_idx is None:
+        if best_action is None:
             return 0
 
-        return best_action_idx
+        return best_action

@@ -3,7 +3,7 @@ import numpy as np
 
 from tetris_rl.evaluation.evaluate import evaluate
 
-def evaluate_seeds(algorithm: str, model_paths: list[str], episodes: int = 20, max_steps_per_episode: int | None = 2000):
+def evaluate_seeds(algorithm: str, model_paths: list[str], episodes: int = 20, max_steps_per_episode: int | None = 2000, seed: int = 0):
     per_model_rows: list[dict] = []
     all_avg_rewards: list[float] = []
     all_avg_lines: list[float] = []
@@ -16,6 +16,7 @@ def evaluate_seeds(algorithm: str, model_paths: list[str], episodes: int = 20, m
             model_path=model_path,
             episodes=episodes,
             max_steps_per_episode=max_steps_per_episode,
+            seed=seed,
         )
 
         avg_reward = float(result["avg_reward"])
@@ -118,17 +119,21 @@ def _print_results_table(rows: list[dict], title: str) -> None:
         print(fmt_row(row))
 
 if __name__ == "__main__":
-    model_paths = find_model_paths("dqn_expD_300000")
+    from tetris_rl.config import DQN_EXPF, PPO_EXPF
+
+    model_paths = find_model_paths(DQN_EXPF.checkpoint_prefix())
     evaluate_seeds(
         algorithm="dqn",
         model_paths=model_paths,
         episodes=20,
         max_steps_per_episode=2000,
+        seed=0,
     )
-    model_paths = find_model_paths("ppo_expD_300000")
+    model_paths = find_model_paths(PPO_EXPF.checkpoint_prefix())
     evaluate_seeds(
         algorithm="ppo",
         model_paths=model_paths,
         episodes=20,
         max_steps_per_episode=2000,
+        seed=0,
     )
