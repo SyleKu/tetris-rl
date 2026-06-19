@@ -1075,3 +1075,166 @@ The remaining gap is **survival/long-horizon play**, not line discovery. Natural
 follow-ups: longer training budgets now that the signal is stable, mask-aware
 exploration tuning for DQN, and revisiting the survival-vs-clearing reward
 balance (e.g. the `expD_strong_penalty` preset) under the masked setup.
+
+---
+
+## Experiment G (Enriched Observation: Engineered Features + Next Piece)
+
+### Motivation
+
+Experiment F made the action space learnable and turned masked PPO into a
+consistent ~3-lines agent across all seeds, but the agents still die after only
+~30–50 placements — they clear a few lines and then stack themselves out. The
+gap is now survival, which needs better *state* information, not a different
+action space or reward.
+
+Two observations motivate this:
+1. The agent only sees the raw flattened grid plus a one-hot of the current
+   piece. It must infer board-quality signals (holes, surface roughness, column
+   heights) from raw cells — yet those exact features, computed in
+   `env/features.py`, are what let the heuristic clear ~800 lines. We are making
+   the agent rediscover for free what we already compute.
+2. The agent cannot see the **next** piece, so it cannot plan placements that
+   set up the upcoming tetromino — a core skill in real Tetris.
+
+### Change
+
+Experiment G changes *only the observation* (reward and action space are
+Experiment F's), so any difference is attributable to state representation. The
+observation is now opt-in via `ObservationConfig`, keeping Experiment F's flat
+observation intact for comparison:
+
+- **Engineered features** appended to the observation, all normalized to
+  `[0, 1]`: per-column heights (10), holes (1), bumpiness (1).
+- **Next-piece preview**: the env now tracks `next_piece_name` (drawn at reset,
+  advanced each step) and appends its one-hot (7). The played piece sequence and
+  the game-over check are unchanged versus Experiment F — only the preview is
+  newly *exposed*.
+
+Resulting observation: `200 (grid) + 7 (current) + 7 (next) + 10 (heights) +
+1 (holes) + 1 (bumpiness) = 226`, still a `Box(0, 1)`.
+
+Config: `DQN_EXPG` / `PPO_EXPG` in `tetris_rl/config.py` reuse Experiment F's
+reward and hyperparameters and set `observation=EXPG_OBSERVATION`. Checkpoints
+are named `*_expG_1000000_*`; evaluation and GIF rendering select the matching
+observation by experiment token, so Experiment F artifacts keep working.
+
+### Hypothesis
+
+Giving the agent the same board-quality features the heuristic uses, plus a
+one-step lookahead, should improve **survival** (episode length) and therefore
+total lines, without destabilizing the now-consistent masked learning. The risk
+is the opposite of Experiment E: here we add *information*, not punishment, so
+collapse is unlikely; the open question is how much the MLP benefits versus
+re-deriving these features itself.
+
+### Setup
+
+- Observation: `Box(226,)` (flat grid + current/next one-hot + heights/holes/
+  bumpiness), `ObservationConfig(include_engineered_features=True,
+  include_next_piece=True)`.
+- Action space + reward: identical to Experiment F.
+- Algorithms: `MaskablePPO` (masking) and DQN (no masking), `PPO_EXPG` /
+  `DQN_EXPG`.
+- Seeds: 0, 1, 2.
+
+### Validation so far (engineering, not learning)
+
+- Full test suite passes (61/61), including new `tests/test_observation.py`
+  asserting the enriched dimension, `[0, 1]` bounds, and the next-piece one-hot.
+- Smoke-trained MaskablePPO on the 226-dim observation end-to-end; it learns and
+  predicts only legal (masked) actions.
+- Experiment F GIFs/eval are unchanged (flat observation path preserved).
+
+### Planned evaluation
+
+- Train `DQN_EXPG` / `PPO_EXPG` across seeds 0–2 and evaluate with
+  `evaluate_seeds` (20 episodes, 2000-step truncation, seeded).
+- Compare against Experiment F, watching **episode length / survival** in
+  particular, not just mean lines.
+
+### Results
+
+`DQN_EXPG` / `PPO_EXPG` were trained across seeds 0–2 (`*_expG_1000000_*`
+checkpoints) and evaluated with `evaluate_seeds`: 20 episodes per seed,
+2000-step truncation, seeded resets. Full per-episode dump in
+`results_ExperimentG.txt`.
+
+#### DQN (expG observation, no masking)
+
+| Seed  | Avg Reward | Avg Lines | Avg Steps |
+|-------|-----------:|----------:|----------:|
+| 0     |      22.14 |      0.65 |       6.2 |
+| 1     |      24.71 |      0.70 |       6.4 |
+| 2     |      21.99 |      0.65 |       6.8 |
+
+**Aggregate:** reward `22.95 ± 1.25`, lines `0.67 ± 0.02`, ~6.5 steps/episode.
+
+#### MaskablePPO (expG observation, true action masking)
+
+| Seed  | Avg Reward | Avg Lines | Avg Steps |
+|-------|-----------:|----------:|----------:|
+| 0     |     135.09 |      2.95 |      43.5 |
+| 1     |     184.82 |      3.95 |      44.3 |
+| 2     |     180.43 |      3.85 |      44.2 |
+
+**Aggregate:** reward `166.78 ± 22.48`, lines `3.58 ± 0.45`, ~44 steps/episode
+(max episode 58 steps).
+
+#### Summary
+
+| Algorithm                 | Mean Reward ± Std | Mean Lines ± Std |
+|---------------------------|-------------------|------------------|
+| DQN (expG observation)    | `22.95 ± 1.25`    | `0.67 ± 0.02`    |
+| MaskablePPO (expG obs.)   | `166.78 ± 22.48`  | `3.58 ± 0.45`    |
+
+### Analysis
+
+The enriched 226-dim observation produced a **modest mean improvement but a
+clear regression in cross-seed consistency** relative to Experiment F.
+
+- **MaskablePPO mean lines edged up** from F's `3.03 ± 0.08` to `3.58 ± 0.45`,
+  and survival rose slightly (~44 steps/episode vs F's ~33–54 range, best
+  episode 58 steps). The best seed reaches `3.95` lines with episodes of 5–8
+  line clears.
+- **But the variance that F had eliminated came back.** The cross-seed lines std
+  jumped from `0.08` to `0.45` and reward std from `4.29` to `22.48` — seed 0
+  (`2.95` lines) lags seeds 1–2 (`~3.9`) substantially. The defining win of
+  Experiment F (every seed behaving identically) is partly undone here.
+- **DQN did not benefit at all.** Lines stayed at `0.67 ± 0.02` (essentially
+  F's `0.60`) with episodes still dying at ~6–7 placements. The richer features
+  give the masking-less DQN nothing it can exploit; it still ends most episodes
+  on the `-10` invalid-action penalty.
+- **Survival is still the wall.** Even the best masked PPO tops out around 44–58
+  placements and never approaches the 2000-step truncation, far below the
+  heuristic's ~800 lines. Extra state information moved the needle on *line
+  discovery* but not on *long-horizon survival*.
+
+### Interpretation
+
+Adding the heuristic's own board-quality features plus a next-piece preview was
+*helpful but not decisive*. The masked PPO clears slightly more lines, which
+suggests the features carry some usable signal, but the gain is within noise of
+F for the weaker seed and comes at the cost of reintroduced seed variance — the
+opposite of what we hoped (we wanted survival up *and* variance to stay low).
+This points to the bottleneck no longer being state representation but the
+**learning horizon / exploration**: the policy still has not learned to value
+keeping the stack low over many placements, regardless of whether those signals
+are handed to it explicitly.
+
+### Conclusion
+
+Experiment G is **roughly on par with Experiment F on the mean and slightly
+worse on robustness**. The enriched observation is a reasonable, low-risk change
+(no collapse, modest lines gain for PPO) but it is *not* the survival
+breakthrough — Experiment F remains the cleanest strong baseline given its much
+tighter cross-seed variance. DQN is unaffected.
+
+### Next step
+
+Survival/long-horizon play is now firmly the binding constraint, not state
+information. Promising directions: longer training budgets (the 1M-step runs may
+simply be under-trained for sustained play), a survival-weighted reward (e.g.
+the `expD_strong_penalty` preset) under the masked setup, and investigating why
+seed 0 underperforms — the returned variance suggests optimization instability
+rather than a representation gap.

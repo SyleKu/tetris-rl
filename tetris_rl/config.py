@@ -43,6 +43,21 @@ class RewardConfig:
     invalid_action_penalty: float = 10.0
 
 
+@dataclass(frozen=True)
+class ObservationConfig:
+    """Which components :class:`TetrisEnv` exposes in its observation vector.
+
+    The defaults reproduce the Experiment D/F observation: the flattened board
+    grid plus a one-hot of the current piece. Experiment G enriches it with the
+    engineered board features (per-column heights, holes, bumpiness) the
+    heuristic relies on, and a one-hot preview of the next piece. All added
+    features are normalized to ``[0, 1]`` so the observation stays a ``Box(0, 1)``.
+    """
+
+    include_engineered_features: bool = False  # column heights, holes, bumpiness
+    include_next_piece: bool = False
+
+
 # Named reward presets. Earlier experiments (A/B) used absolute board penalties
 # rather than the delta-based form the env now implements, so only the
 # delta-based experiments are expressible as presets here.
@@ -67,6 +82,7 @@ class TrainConfig:
     total_timesteps: int = 1_000_000
     seeds: tuple[int, ...] = (0, 1, 2)
     reward: RewardConfig = field(default_factory=RewardConfig)
+    observation: ObservationConfig = field(default_factory=ObservationConfig)
     hyperparams: dict = field(default_factory=dict)
 
     def checkpoint_prefix(self) -> str:
@@ -112,4 +128,27 @@ PPO_EXPF = TrainConfig(
         vf_coef=0.5,
         max_grad_norm=0.5,
     ),
+)
+
+
+# --- Experiment G: enriched observation (engineered features + next piece) ----
+# Same reward and hyperparameters as Experiment F; the only change is the
+# observation, so any gain is attributable to the richer state representation.
+EXPG_OBSERVATION = ObservationConfig(
+    include_engineered_features=True,
+    include_next_piece=True,
+)
+
+DQN_EXPG = TrainConfig(
+    algo="dqn",
+    experiment="expG",
+    observation=EXPG_OBSERVATION,
+    hyperparams=dict(DQN_EXPF.hyperparams),
+)
+
+PPO_EXPG = TrainConfig(
+    algo="ppo",
+    experiment="expG",
+    observation=EXPG_OBSERVATION,
+    hyperparams=dict(PPO_EXPF.hyperparams),
 )

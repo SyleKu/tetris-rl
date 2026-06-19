@@ -1,9 +1,40 @@
+import sys
+from contextlib import contextmanager
 from pathlib import Path
 import numpy as np
 
+from tetris_rl.config import ObservationConfig
 from tetris_rl.evaluation.evaluate import evaluate
 
-def evaluate_seeds(algorithm: str, model_paths: list[str], episodes: int = 20, max_steps_per_episode: int | None = 2000, seed: int = 0):
+
+class _Tee:
+    """Write to several streams at once (e.g. terminal + file)."""
+
+    def __init__(self, *streams):
+        self.streams = streams
+
+    def write(self, data):
+        for stream in self.streams:
+            stream.write(data)
+
+    def flush(self):
+        for stream in self.streams:
+            stream.flush()
+
+
+@contextmanager
+def tee_stdout(output_path: str):
+    """Duplicate everything printed to stdout into ``output_path`` as well."""
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    original_stdout = sys.stdout
+    with open(output_path, "w") as file:
+        sys.stdout = _Tee(original_stdout, file)
+        try:
+            yield
+        finally:
+            sys.stdout = original_stdout
+
+def evaluate_seeds(algorithm: str, model_paths: list[str], episodes: int = 20, max_steps_per_episode: int | None = 2000, seed: int = 0, observation_config: ObservationConfig | None = None):
     per_model_rows: list[dict] = []
     all_avg_rewards: list[float] = []
     all_avg_lines: list[float] = []
@@ -17,6 +48,7 @@ def evaluate_seeds(algorithm: str, model_paths: list[str], episodes: int = 20, m
             episodes=episodes,
             max_steps_per_episode=max_steps_per_episode,
             seed=seed,
+            observation_config=observation_config,
         )
 
         avg_reward = float(result["avg_reward"])
@@ -119,21 +151,28 @@ def _print_results_table(rows: list[dict], title: str) -> None:
         print(fmt_row(row))
 
 if __name__ == "__main__":
-    from tetris_rl.config import DQN_EXPF, PPO_EXPF
+    from tetris_rl.config import DQN_EXPG, PPO_EXPG
 
-    model_paths = find_model_paths(DQN_EXPF.checkpoint_prefix())
-    evaluate_seeds(
-        algorithm="dqn",
-        model_paths=model_paths,
-        episodes=20,
-        max_steps_per_episode=2000,
-        seed=0,
-    )
-    model_paths = find_model_paths(PPO_EXPF.checkpoint_prefix())
-    evaluate_seeds(
-        algorithm="ppo",
-        model_paths=model_paths,
-        episodes=20,
-        max_steps_per_episode=2000,
-        seed=0,
-    )
+    # Configs to evaluate. Observation comes from each config so the env matches
+    # what the checkpoint was trained with. Swap to DQN_EXPF / PPO_EXPF to
+    # evaluate Experiment F instead.
+    configs = (DQN_EXPG, PPO_EXPG)
+    output_path = "results/eval_results.txt"
+
+    with tee_stdout(output_path):
+        for cfg in configs:
+            model_paths = find_model_paths(cfg.checkpoint_prefix())
+            if not model_paths:
+                print(f"\nNo checkpoints found for {cfg.checkpoint_prefix()}_seed*.zip — skipping.")
+                continue
+
+            evaluate_seeds(
+                algorithm=cfg.algo,
+                model_paths=model_paths,
+                episodes=20,
+                max_steps_per_episode=2000,
+                seed=0,
+                observation_config=cfg.observation,
+            )
+
+    print(f"\nSaved evaluation results to: {output_path}")

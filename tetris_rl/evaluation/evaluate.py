@@ -4,6 +4,7 @@ import numpy as np
 from sb3_contrib import MaskablePPO
 from stable_baselines3 import DQN
 
+from tetris_rl.config import ObservationConfig
 from tetris_rl.env.tetris_env import TetrisEnv
 
 
@@ -36,16 +37,21 @@ def evaluate(
     episodes: int = 20,
     max_steps_per_episode: int | None = 2000,
     seed: int = 0,
+    observation_config: ObservationConfig | None = None,
 ):
     """Evaluate a checkpoint.
 
     Each episode ``i`` is reset with ``seed + i`` so the piece sequence is fixed
     and the reported metrics are reproducible across runs.
+
+    ``observation_config`` must match the one the checkpoint was trained with
+    (e.g. ``PPO_EXPG.observation``); otherwise the observation shape will not
+    match the model. Defaults to the flat Experiment D/F observation.
     """
     if not Path(model_path).exists():
         raise FileNotFoundError(f"Model not found: {model_path}")
 
-    env = TetrisEnv()
+    env = TetrisEnv(observation_config=observation_config)
     model = load_model(algorithm, model_path)
 
     rewards = []
@@ -105,17 +111,13 @@ def evaluate(
 if __name__ == "__main__":
     from tetris_rl.config import DQN_EXPF, PPO_EXPF
 
-    evaluate(
-        algorithm="dqn",
-        model_path=f"{DQN_EXPF.checkpoint_path(seed=0)}.zip",
-        episodes=20,
-        max_steps_per_episode=2000,
-        seed=0,
-    )
-    evaluate(
-        algorithm="ppo",
-        model_path=f"{PPO_EXPF.checkpoint_path(seed=0)}.zip",
-        episodes=20,
-        max_steps_per_episode=2000,
-        seed=0,
-    )
+    # Swap in DQN_EXPG / PPO_EXPG (and their .observation) once those are trained.
+    for cfg in (DQN_EXPF, PPO_EXPF):
+        evaluate(
+            algorithm=cfg.algo,
+            model_path=f"{cfg.checkpoint_path(seed=0)}.zip",
+            episodes=20,
+            max_steps_per_episode=2000,
+            seed=0,
+            observation_config=cfg.observation,
+        )

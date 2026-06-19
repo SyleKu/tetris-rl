@@ -2,25 +2,34 @@ import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
 
-from tetris_rl.config import RewardConfig
+from tetris_rl.config import ObservationConfig, RewardConfig
 from tetris_rl.env.board import Board
-from tetris_rl.env.features import aggregate_height, bumpiness, holes
+from tetris_rl.env.features import aggregate_height, bumpiness, column_heights, holes
 from tetris_rl.env.pieces import PIECES
 
 class TetrisEnv(gym.Env):
     metadata = {"render_modes": ["human"]}
 
-    def __init__(self, height=20, width=10, render_mode=None, reward_config: RewardConfig | None = None):
+    def __init__(
+        self,
+        height=20,
+        width=10,
+        render_mode=None,
+        reward_config: RewardConfig | None = None,
+        observation_config: ObservationConfig | None = None,
+    ):
         super().__init__()
         self.height = height
         self.width = width
         self.render_mode = render_mode
         self.reward_config = reward_config or RewardConfig()
+        self.observation_config = observation_config or ObservationConfig()
 
         self.board = Board(height=height, width=width)
         self.piece_names = list(PIECES.keys())
         self.current_piece_name = None
         self.current_piece = None
+        self.next_piece_name = None
 
         # Fixed action <-> placement mapping.
         #
@@ -37,7 +46,14 @@ class TetrisEnv(gym.Env):
         self.max_actions = self.max_rotations * self.width
         self.action_space = spaces.Discrete(self.max_actions)
 
+        # Observation dimension depends on which optional components are enabled
+        # (see ObservationConfig). Base = flattened grid + current-piece one-hot.
         obs_dim = self.height * self.width + len(self.piece_names)
+        if self.observation_config.include_next_piece:
+            obs_dim += len(self.piece_names)
+        if self.observation_config.include_engineered_features:
+            # per-column heights + holes + bumpiness
+            obs_dim += self.width + 2
         self.observation_space = spaces.Box(
             low=0.0,
             high=1.0,
@@ -58,10 +74,29 @@ class TetrisEnv(gym.Env):
         vec[self.piece_names.index(piece_name)] = 1.0
         return vec
 
+    def _engineered_features(self) -> np.ndarray:
+        """Normalized board-quality features (heights, holes, bumpiness) in [0, 1]."""
+        grid = self.board.grid
+
+        heights = column_heights(grid).astype(np.float32) / self.height
+
+        # Safe upper bounds keep each scalar within [0, 1].
+        holes_norm = holes(grid) / max(1, (self.height - 1) * self.width)
+        bumpiness_norm = bumpiness(grid) / max(1, (self.width - 1) * self.height)
+
+        scalars = np.array([holes_norm, bumpiness_norm], dtype=np.float32)
+        return np.clip(np.concatenate([heights, scalars]), 0.0, 1.0)
+
     def _get_observation(self):
-        grid_features = self.board.grid.flatten().astype(np.float32)
-        piece_features = self.piece_one_hot(self.current_piece_name)
-        return np.concatenate([grid_features, piece_features]).astype(np.float32)
+        parts = [
+            self.board.grid.flatten().astype(np.float32),
+            self.piece_one_hot(self.current_piece_name),
+        ]
+        if self.observation_config.include_next_piece:
+            parts.append(self.piece_one_hot(self.next_piece_name))
+        if self.observation_config.include_engineered_features:
+            parts.append(self._engineered_features())
+        return np.concatenate(parts).astype(np.float32)
 
     def _is_valid_placement(self, rotation_idx: int, column: int, piece_name: str | None = None) -> bool:
         if piece_name is None:
@@ -126,6 +161,7 @@ class TetrisEnv(gym.Env):
         super().reset(seed=seed)
         self.board = Board(height=self.height, width=self.width)
         self.current_piece_name = self._sample_piece()
+        self.next_piece_name = self._sample_piece()
         return self._get_observation(), {}
 
     def _drop_height(self, piece, column: int):
@@ -203,14 +239,16 @@ class TetrisEnv(gym.Env):
             + rc.delta_bumpiness * delta_bumpiness
         )
 
-        next_piece_name = self._sample_piece()
-        terminated = not self._can_spawn_piece(next_piece_name)
+        # The previewed next piece becomes current; draw a fresh preview.
+        upcoming_piece_name = self.next_piece_name
+        terminated = not self._can_spawn_piece(upcoming_piece_name)
         truncated = False
 
         if terminated:
             reward -= rc.spawn_fail_penalty
 
-        self.current_piece_name = next_piece_name
+        self.current_piece_name = upcoming_piece_name
+        self.next_piece_name = self._sample_piece()
 
         obs = self._get_observation()
         info = {"lines_cleared": lines}

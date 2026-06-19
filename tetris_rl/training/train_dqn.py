@@ -3,7 +3,7 @@ import os
 from stable_baselines3 import DQN
 from stable_baselines3.common.monitor import Monitor
 
-from tetris_rl.config import DQN_EXPF, TrainConfig
+from tetris_rl.config import DQN_EXPG, TrainConfig
 from tetris_rl.env.tetris_env import TetrisEnv
 
 # NOTE: stable-baselines3 has no action-masking-capable DQN, so DQN trains on
@@ -13,21 +13,24 @@ from tetris_rl.env.tetris_env import TetrisEnv
 # and terminates on. MaskablePPO (train_ppo.py) is the recommended setup.
 
 
-def make_env(seed, reward_config):
-    env = TetrisEnv(reward_config=reward_config)
+def make_env(seed, reward_config, observation_config):
+    env = TetrisEnv(reward_config=reward_config, observation_config=observation_config)
     env = Monitor(env)
     env.reset(seed=seed)
     return env
 
 
-def train(config: TrainConfig = DQN_EXPF):
+def train(config: TrainConfig = DQN_EXPG):
+    # NOTE: writes ./results/checkpoints/{checkpoint_prefix}_seed*.zip. The
+    # default (DQN_EXPG) writes new dqn_expG_* files and does NOT overwrite the
+    # existing expF checkpoints. Pass DQN_EXPF to reproduce Experiment F.
     os.makedirs("./results/checkpoints", exist_ok=True)
     os.makedirs("./results/tb/dqn", exist_ok=True)
 
     for seed in config.seeds:
         print(f"\n=== Training DQN ({config.experiment}) with seed={seed} ===")
 
-        env = make_env(seed, config.reward)
+        env = make_env(seed, config.reward, config.observation)
 
         model = DQN(
             "MlpPolicy",

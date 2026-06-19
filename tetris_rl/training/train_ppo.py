@@ -4,7 +4,7 @@ from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
 from stable_baselines3.common.monitor import Monitor
 
-from tetris_rl.config import PPO_EXPF, TrainConfig
+from tetris_rl.config import PPO_EXPG, TrainConfig
 from tetris_rl.env.tetris_env import TetrisEnv
 
 
@@ -12,22 +12,25 @@ def _mask_fn(env):
     return env.action_masks()
 
 
-def make_env(seed, reward_config):
-    env = TetrisEnv(reward_config=reward_config)
+def make_env(seed, reward_config, observation_config):
+    env = TetrisEnv(reward_config=reward_config, observation_config=observation_config)
     env = ActionMasker(env, _mask_fn)
     env = Monitor(env)
     env.reset(seed=seed)
     return env
 
 
-def train(config: TrainConfig = PPO_EXPF):
+def train(config: TrainConfig = PPO_EXPG):
+    # NOTE: writes ./results/checkpoints/{checkpoint_prefix}_seed*.zip. The
+    # default (PPO_EXPG) writes new ppo_expG_* files and does NOT overwrite the
+    # existing expF checkpoints. Pass PPO_EXPF to reproduce Experiment F.
     os.makedirs("./results/checkpoints", exist_ok=True)
     os.makedirs("./results/tb/ppo", exist_ok=True)
 
     for seed in config.seeds:
         print(f"\n=== Training MaskablePPO ({config.experiment}) with seed={seed} ===")
 
-        env = make_env(seed, config.reward)
+        env = make_env(seed, config.reward, config.observation)
 
         model = MaskablePPO(
             "MlpPolicy",

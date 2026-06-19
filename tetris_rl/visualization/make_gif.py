@@ -6,7 +6,15 @@ from PIL import Image, ImageDraw, ImageFont
 from sb3_contrib import MaskablePPO
 from stable_baselines3 import DQN
 
+from tetris_rl.config import EXPG_OBSERVATION, ObservationConfig
 from tetris_rl.env.tetris_env import TetrisEnv
+
+# Maps the experiment token in a checkpoint name to the observation it was
+# trained with, so auto-discovered checkpoints get the right env. Experiments
+# not listed here fall back to the flat Experiment D/F observation.
+EXPERIMENT_OBSERVATIONS: dict[str, ObservationConfig] = {
+    "expG": EXPG_OBSERVATION,
+}
 
 CELL_SIZE = 28
 GRID_LINE_COLOR = (60, 60, 60)
@@ -94,9 +102,10 @@ def generate_gif(
         max_steps: int = 200,
         fps: int = 3,
         seed: int | None = None,
+        observation_config: ObservationConfig | None = None,
 ):
 
-    env = TetrisEnv()
+    env = TetrisEnv(observation_config=observation_config)
     model = load_model(algorithm, model_path)
 
     obs, _ = env.reset(seed=seed)
@@ -166,6 +175,18 @@ def _algorithm_from_filename(checkpoint_path: Path) -> str | None:
     return algorithm if algorithm in SUPPORTED_ALGORITHMS else None
 
 
+def _observation_from_filename(checkpoint_path: Path) -> ObservationConfig:
+    """Pick the observation config from the experiment token in the filename.
+
+    Names follow ``{algo}_{experiment}_{timesteps}_seed{n}`` (see
+    TrainConfig.checkpoint_prefix). Unknown experiments default to the flat
+    observation, matching TetrisEnv's default.
+    """
+    parts = checkpoint_path.stem.split("_")
+    experiment = parts[1] if len(parts) > 1 else ""
+    return EXPERIMENT_OBSERVATIONS.get(experiment, ObservationConfig())
+
+
 def generate_all_gifs(
         checkpoint_dir: str = "./results/checkpoints",
         output_dir: str = "./results/gifs",
@@ -206,14 +227,18 @@ def generate_all_gifs(
             max_steps=max_steps,
             fps=fps,
             seed=seed,
+            observation_config=_observation_from_filename(checkpoint),
         )
 
 
 if __name__ == "__main__":
+    # overwrite=False: only render checkpoints that don't have a GIF yet.
+    # Set overwrite=True to re-render everything.
     generate_all_gifs(
         checkpoint_dir="./results/checkpoints",
         output_dir="./results/gifs",
         max_steps=200,
         fps=3,
         seed=0,
+        overwrite=False,
     )
