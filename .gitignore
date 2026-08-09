@@ -208,3 +208,10 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Trainingsartefakte (Checkpoints, GIFs, TensorBoard) - gehoeren nicht ins Repo
+results/
+
+# Lokale Claude-Konfiguration
+.claude/
+CLAUDE.md

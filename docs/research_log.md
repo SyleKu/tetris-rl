@@ -1238,3 +1238,174 @@ simply be under-trained for sustained play), a survival-weighted reward (e.g.
 the `expD_strong_penalty` preset) under the masked setup, and investigating why
 seed 0 underperforms — the returned variance suggests optimization instability
 rather than a representation gap.
+
+### Post-hoc note (TensorBoard inspection, 2026-06-19)
+
+Before running another experiment, the PPO training curves were re-examined
+(`results/tb/ppo/seed_*/MaskablePPO_1` = expF, `MaskablePPO_2` = expG). Both
+`rollout/ep_rew_mean` and `ep_len_mean` are **still rising monotonically at the
+1M-step cutoff** for every seed — several seeds make their largest jump in the
+final 200k steps (e.g. expG seed0: reward 92 → 134). Tail slope ≈ +75–175
+reward / 1M; `explained_variance ≈ 0.5`, `entropy_loss ≈ -0.45` (healthy
+mid-training, no collapse). Two implications:
+
+1. **The runs are under-trained, not converged** — a longer budget (3M+) is
+   genuinely worth it, and expG's apparent variance "regression" is likely an
+   artifact of freezing different seeds at different points on a still-climbing
+   curve (expG actually climbs *faster* than expF on both reward and survival).
+2. This makes dense reward shaping (below) more attractive: it should steepen
+   the climb so a fixed budget reaches better policies.
+
+---
+
+## Experiment H (Potential-Based Reward Shaping from the Heuristic)
+
+### Motivation
+
+Experiment F made the action space learnable (masked PPO reliably clears ~3
+lines), and Experiment G showed that *more state information* (engineered
+features + next piece) moved the needle only modestly. The per-episode dump
+makes the remaining failure mode concrete: masked PPO episodes end in
+`terminated=True` at ~45 placements — the agent **stacks itself out**, it does
+not run out of time. Arithmetic: ~45 placements × 4 cells ≈ 180 cells added,
+minus ~3–4 lines × 10 ≈ 35 removed ≈ 145 cells on a 200-cell board → game over.
+The agent clears lines ~5× less efficiently than the heuristic (heuristic ≈ 1
+line / 2.5 placements; PPO ≈ 1 / 13). It is **stacking dirty** (holes + uneven
+surface), and the board-quality shaping (`delta_height=0.02`, `delta_holes=0.1`)
+is far too weak relative to `line_clear=50` to drive clean stacking.
+
+The project already computes a strong board-quality score: the heuristic
+(`agents/heuristic.py`) clears ~797 lines by greedily maximizing a weighted sum
+of holes / bumpiness / aggregate-height / max-height. We are making the agent
+rediscover, from raw rewards, exactly what we already know how to compute.
+
+### Change
+
+Inject the heuristic's board score as **potential-based reward shaping**
+(Ng, Harada & Russell, 1999). Define a pure *state* potential
+`Φ(s) = score_board(grid, lines_cleared=0)` (`board_potential` in
+`agents/heuristic.py` — the heuristic score with the transition-dependent
+line term removed), and add to the per-step reward:
+
+```
+F = potential_coef * (potential_gamma * Φ(s′) − Φ(s))
+```
+
+with `Φ(absorbing) = 0`. This form is **policy-invariant**: it cannot change the
+optimal policy, only densify the learning signal — so unlike Experiment E it
+carries no collapse risk. The shaping is opt-in via new `RewardConfig` fields
+(`potential_shaping`, `potential_coef=1.0`, `potential_gamma=0.99`,
+`potential_weights`), off by default, so Experiments F/G are untouched.
+`potential_gamma` matches the training discount (0.99) so the invariance holds.
+
+The observation and base reward are **Experiment F's** (flat `Box(207)`,
+unchanged reward values) — only the shaping is added, so any gain is
+attributable to the shaping alone.
+
+### Hypothesis
+
+Handing the agent a dense, per-step signal that rewards keeping the board clean
+(low holes/height/bumpiness) should improve **stacking quality** and therefore
+**survival** (episode length) and total lines, especially for masked PPO. Risk
+is low: the term is policy-invariant and additive, so the worst case is "no
+effect," not collapse.
+
+### Setup
+
+- Observation: flat `Box(207)` (Experiment F), `ObservationConfig()` defaults.
+- Reward: Experiment F values + potential-based shaping (`EXPH_REWARD =
+  RewardConfig(potential_shaping=True)`).
+- Algorithms: `MaskablePPO` (masking) and DQN (no masking), `PPO_EXPH` /
+  `DQN_EXPH`.
+- Seeds: 0, 1, 2. Checkpoints `*_expH_1000000_*`.
+
+### Validation so far (engineering, not learning)
+
+- Full test suite passes (69/69), including new `tests/test_potential_shaping.py`
+  asserting: `Φ` equals the state-only heuristic score, `Φ(empty) = 0`, shaping
+  is off by default, and a step's reward gains exactly
+  `coef · (γ·Φ(s′) − Φ(s))` over the unshaped reward (and scales with `coef`).
+- Smoke-trained `MaskablePPO` end-to-end on the shaped env; it learns and
+  predicts only legal (masked) actions.
+
+### Planned evaluation
+
+- Train `DQN_EXPH` / `PPO_EXPH` across seeds 0–2 (ideally a longer budget than
+  1M given the under-training note above) and evaluate with `evaluate_seeds`
+  (20 episodes, 2000-step truncation, seeded).
+- Compare against Experiment F, watching **episode length / survival** and
+  **lines-per-placement efficiency**, not just mean lines.
+
+### Results
+
+`DQN_EXPH` / `PPO_EXPH` were trained across seeds 0–2 (`*_expH_1000000_*`) and
+evaluated with `evaluate_seeds` (20 episodes per seed, 2000-step truncation,
+seeded). Full per-episode dump in `results_ExperimentH.txt`.
+
+| Algorithm                  | Mean Reward ± Std | Mean Lines ± Std | Avg Steps |
+|----------------------------|-------------------|------------------|-----------|
+| DQN (expH shaping)         | `-10.00 ± 0.00`   | `0.00 ± 0.00`    | 1.0       |
+| MaskablePPO (expH shaping) | `-11.28 ± 0.17`   | `0.00 ± 0.00`    | ~9        |
+
+This is a **complete collapse** relative to Experiment F (PPO `138.52 ± 4.29`
+reward / `3.03` lines) and G (`166.78` / `3.58` lines):
+
+- **DQN dies on step 1 in every single episode** (all 60 episodes:
+  `reward=-10.00, steps=1`). It learned to immediately pick an *illegal*
+  placement and eat the one-time `-10` invalid-action penalty.
+- **Masked PPO survives ~9 placements and clears zero lines**, ending every
+  episode on the `-10` game-over penalty (reward ≈ `-11`). It learned to stack
+  itself out as fast as possible.
+
+### Why it collapsed (verified numerically)
+
+The shaping is *theoretically* policy-invariant (PBRS, Ng et al. 1999), so the
+collapse is surprising — but the cause is **magnitude/scale**, not sign. Playing
+the board with the **heuristic itself** (optimal placement) and logging the
+per-step shaping shows:
+
+```
+step  phi_before  phi_after  shaping_F   base~  lines
+  0        0.00      -2.00      -1.98    -0.02      0
+  3       -6.00      -7.20      -1.13    +0.02      0
+  7      -12.20     -13.40      -1.07    +0.02      0     <- still no line
+  8      -13.40     -11.40      +2.11   +50.22      1     <- first clear
+```
+
+During the entire 8-placement *setup* before a line can clear, the shaping term
+is **≈ −1.5 every step** while the base reward is ≈ 0 (`valid_move=0.1` minus
+tiny deltas). Because Φ is the raw heuristic score (tens of units) and
+`potential_coef=1.0`, the per-step shaping is **~15× the `valid_move` bonus and
+persistently negative** until a clear arrives ~8 steps later. The heuristic
+absorbs ≈ −12 of shaping before its first reward; an agent that has not yet
+discovered the delayed `+50` sees only the dense negative stream and learns the
+locally optimal response: **end the episode as fast as possible.**
+
+- DQN (no masking) has the cheapest exit available — a single illegal action on
+  step 1 (`-10` once) beats accumulating `-1.5 × N` then a `-10` game-over — so
+  it suicides immediately.
+- Masked PPO cannot pick an illegal action, so it minimizes exposure by stacking
+  out in ~9 steps and never invests the multi-step setup a clear requires.
+
+Policy-invariance holds at *optimality* with exact value functions; with a
+coefficient that lets shaping dominate the learning gradient and a true reward
+that is ~8 steps sparse, the undertrained policy never explores far enough to
+see the telescoped payoff and converges to the degenerate "exit early" policy.
+
+### Conclusion
+
+Experiment H **as configured is far worse than Experiment F** — it is the second
+time large-magnitude shaping has destroyed learning (cf. Experiment E). The idea
+(inject the heuristic's board-quality knowledge) is sound, but the shaping must
+be *auxiliary* to the line-clear reward, not dominant. Experiment F remains the
+strongest setup.
+
+### Next step (Experiment H2)
+
+Re-run with the shaping scaled down so it nudges rather than dominates:
+- drop `potential_coef` to ~`0.01–0.05` (target per-step shaping ≲ `valid_move`,
+  not 15× it), and/or normalize Φ (e.g. divide the heuristic features by the
+  board area) so the magnitude is bounded regardless of board height;
+- keep everything else at Experiment F. This is a one-line config change
+  (`EXPH_REWARD = RewardConfig(potential_shaping=True, potential_coef=0.02)`),
+  directly analogous to the Experiment E → E2 correction.

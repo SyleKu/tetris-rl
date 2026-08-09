@@ -3,7 +3,7 @@ import os
 from stable_baselines3 import DQN
 from stable_baselines3.common.monitor import Monitor
 
-from tetris_rl.config import DQN_EXPG, TrainConfig
+from tetris_rl.config import DQN_EXPH, TrainConfig
 from tetris_rl.env.tetris_env import TetrisEnv
 
 # NOTE: stable-baselines3 has no action-masking-capable DQN, so DQN trains on
@@ -20,10 +20,11 @@ def make_env(seed, reward_config, observation_config):
     return env
 
 
-def train(config: TrainConfig = DQN_EXPG):
+def train(config: TrainConfig = DQN_EXPH):
     # NOTE: writes ./results/checkpoints/{checkpoint_prefix}_seed*.zip. The
-    # default (DQN_EXPG) writes new dqn_expG_* files and does NOT overwrite the
-    # existing expF checkpoints. Pass DQN_EXPF to reproduce Experiment F.
+    # default (DQN_EXPH) writes new dqn_expH_* files and does NOT overwrite the
+    # existing expF/expG checkpoints. Pass DQN_EXPF / DQN_EXPG to reproduce
+    # earlier experiments.
     os.makedirs("./results/checkpoints", exist_ok=True)
     os.makedirs("./results/tb/dqn", exist_ok=True)
 

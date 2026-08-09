@@ -10,6 +10,8 @@ archaeology.
 
 from dataclasses import dataclass, field
 
+from tetris_rl.agents.heuristic import HeuristicWeights
+
 
 @dataclass(frozen=True)
 class RewardConfig:
@@ -28,8 +30,16 @@ class RewardConfig:
     board, and ``-invalid_action_penalty`` when an unmasked policy selects an
     illegal placement (only reachable without action masking, e.g. DQN).
 
+    Experiment H optionally adds potential-based reward shaping (Ng et al.,
+    1999): ``F = potential_coef * (potential_gamma * Phi(s') - Phi(s))`` where
+    ``Phi`` is the heuristic board score as a pure state function
+    (``board_potential``). It densifies the learning signal with the heuristic's
+    board-quality knowledge without changing the optimal policy. ``potential_gamma``
+    must match the training discount factor for the invariance to hold.
+
     Defaults reproduce the "Experiment C/D" reward (Experiment D kept C's
-    reward and only changed the observation).
+    reward and only changed the observation); shaping is off by default so
+    Experiments F/G are unaffected.
     """
 
     line_clear: float = 50.0
@@ -41,6 +51,12 @@ class RewardConfig:
     spawn_fail_penalty: float = 5.0
     game_over_penalty: float = 10.0
     invalid_action_penalty: float = 10.0
+
+    # Potential-based reward shaping (Experiment H); opt-in.
+    potential_shaping: bool = False
+    potential_coef: float = 1.0
+    potential_gamma: float = 0.99  # must match the training gamma
+    potential_weights: HeuristicWeights = field(default_factory=HeuristicWeights)
 
 
 @dataclass(frozen=True)
@@ -150,5 +166,27 @@ PPO_EXPG = TrainConfig(
     algo="ppo",
     experiment="expG",
     observation=EXPG_OBSERVATION,
+    hyperparams=dict(PPO_EXPF.hyperparams),
+)
+
+
+# --- Experiment H: potential-based reward shaping from the heuristic ----------
+# Adds F = gamma * Phi(s') - Phi(s) (Phi = heuristic board score) to the
+# Experiment F reward. The observation stays the flat Experiment F observation
+# (no engineered features / next piece), so any gain is attributable to the
+# shaping alone. potential_gamma matches the configs' training gamma (0.99).
+EXPH_REWARD = RewardConfig(potential_shaping=True)
+
+DQN_EXPH = TrainConfig(
+    algo="dqn",
+    experiment="expH",
+    reward=EXPH_REWARD,
+    hyperparams=dict(DQN_EXPF.hyperparams),
+)
+
+PPO_EXPH = TrainConfig(
+    algo="ppo",
+    experiment="expH",
+    reward=EXPH_REWARD,
     hyperparams=dict(PPO_EXPF.hyperparams),
 )

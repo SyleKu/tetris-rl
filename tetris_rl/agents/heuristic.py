@@ -20,6 +20,18 @@ def score_board(grid, lines_cleared: int, weights: HeuristicWeights) -> float:
         + weights.max_height * max_height(grid)
     )
 
+def board_potential(grid, weights: HeuristicWeights) -> float:
+    """State-only board score Phi(s) used as the potential for reward shaping.
+
+    This is ``score_board`` with the transition-dependent ``lines_cleared`` term
+    removed, so it is a pure function of the board state. Used by Experiment H's
+    potential-based reward shaping (``F = gamma * Phi(s') - Phi(s)``), which
+    injects the heuristic's board-quality knowledge as a dense, policy-invariant
+    signal (Ng et al., 1999). On an empty board every feature is zero, so
+    ``Phi = 0``.
+    """
+    return score_board(grid, lines_cleared=0, weights=weights)
+
 class HeuristicAgent:
     def __init__(self, weights: HeuristicWeights | None = None):
         self.weights = weights or HeuristicWeights()

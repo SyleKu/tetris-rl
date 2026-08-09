@@ -2,6 +2,7 @@ import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
 
+from tetris_rl.agents.heuristic import board_potential
 from tetris_rl.config import ObservationConfig, RewardConfig
 from tetris_rl.env.board import Board
 from tetris_rl.env.features import aggregate_height, bumpiness, column_heights, holes
@@ -246,6 +247,15 @@ class TetrisEnv(gym.Env):
 
         if terminated:
             reward -= rc.spawn_fail_penalty
+
+        # Potential-based reward shaping (Experiment H): add
+        # F = coef * (gamma * Phi(s') - Phi(s)) using the heuristic board score
+        # as the potential. Policy-invariant (Ng et al., 1999): it only densifies
+        # the signal. Phi of an absorbing/terminal state is 0 by convention.
+        if rc.potential_shaping:
+            phi_before = board_potential(grid_before, rc.potential_weights)
+            phi_after = 0.0 if terminated else board_potential(grid_after, rc.potential_weights)
+            reward += rc.potential_coef * (rc.potential_gamma * phi_after - phi_before)
 
         self.current_piece_name = upcoming_piece_name
         self.next_piece_name = self._sample_piece()

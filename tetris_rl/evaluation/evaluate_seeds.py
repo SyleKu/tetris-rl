@@ -151,12 +151,12 @@ def _print_results_table(rows: list[dict], title: str) -> None:
         print(fmt_row(row))
 
 if __name__ == "__main__":
-    from tetris_rl.config import DQN_EXPG, PPO_EXPG
+    from tetris_rl.config import DQN_EXPH, PPO_EXPH
 
     # Configs to evaluate. Observation comes from each config so the env matches
-    # what the checkpoint was trained with. Swap to DQN_EXPF / PPO_EXPF to
-    # evaluate Experiment F instead.
-    configs = (DQN_EXPG, PPO_EXPG)
+    # what the checkpoint was trained with. Swap to DQN_EXPF/G / PPO_EXPF/G to
+    # evaluate earlier experiments instead.
+    configs = (DQN_EXPH, PPO_EXPH)
     output_path = "results/eval_results.txt"
 
     with tee_stdout(output_path):

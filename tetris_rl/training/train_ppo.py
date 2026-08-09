@@ -4,7 +4,7 @@ from sb3_contrib import MaskablePPO
 from sb3_contrib.common.wrappers import ActionMasker
 from stable_baselines3.common.monitor import Monitor
 
-from tetris_rl.config import PPO_EXPG, TrainConfig
+from tetris_rl.config import PPO_EXPH, TrainConfig
 from tetris_rl.env.tetris_env import TetrisEnv
 
 
@@ -20,10 +20,11 @@ def make_env(seed, reward_config, observation_config):
     return env
 
 
-def train(config: TrainConfig = PPO_EXPG):
+def train(config: TrainConfig = PPO_EXPH):
     # NOTE: writes ./results/checkpoints/{checkpoint_prefix}_seed*.zip. The
-    # default (PPO_EXPG) writes new ppo_expG_* files and does NOT overwrite the
-    # existing expF checkpoints. Pass PPO_EXPF to reproduce Experiment F.
+    # default (PPO_EXPH) writes new ppo_expH_* files and does NOT overwrite the
+    # existing expF/expG checkpoints. Pass PPO_EXPF / PPO_EXPG to reproduce
+    # earlier experiments.
     os.makedirs("./results/checkpoints", exist_ok=True)
     os.makedirs("./results/tb/ppo", exist_ok=True)
 

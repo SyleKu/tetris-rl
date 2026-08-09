@@ -5,8 +5,8 @@ Equivalent to running these two back to back:
     python -m tetris_rl.training.train_dqn
     python -m tetris_rl.training.train_ppo
 
-Each uses its module default config (currently Experiment G), so this writes
-``dqn_expG_*`` and ``ppo_expG_*`` checkpoints across all configured seeds.
+Each uses its module default config (currently Experiment H), so this writes
+``dqn_expH_*`` and ``ppo_expH_*`` checkpoints across all configured seeds.
 
 Run from the repo root:
 
